@@ -1,0 +1,6 @@
+~0x562d18cb2710
+@?
+$18:"/testsrc/colons.js":print("this is a string with \:colons\: and \\\\backslashes\\\\ in it");\x0aprint("and this one is a \\\\\:doozy\\\\\:!!!");\x0a\x0a\x0a
+!18
+c0:%print:{global}:"this is a string with \:colons\: and \\backslashes\\ in it"
+c67:%print:{global}:"and this one is a \\\:doozy\\\:!!!"

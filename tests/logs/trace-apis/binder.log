@@ -1,0 +1,14 @@
+~0x558631fd0710
+@?
+$18:"/testsrc/binder.js":var say_hi = print.bind(undefined, "hi!");\x0a\x0afor (let i = 0; i < 10; ++i) {\x0a  say_hi();\x0a}\x0a\x0a
+!18
+c77:%print:{global}:"hi!"
+c77:%print:{global}:"hi!"
+c77:%print:{global}:"hi!"
+c77:%print:{global}:"hi!"
+c77:%print:{global}:"hi!"
+c77:%print:{global}:"hi!"
+c77:%print:{global}:"hi!"
+c77:%print:{global}:"hi!"
+c77:%print:{global}:"hi!"
+c77:%print:{global}:"hi!"

@@ -1,0 +1,7 @@
+~0x55b3b0007710
+@?
+$18:"/testsrc/funobj.js":function baloo(x) {\x0a  print("Baloo say " + x);\x0a}\x0a\x0abaloo.call(null, "hello");\x0a\x0avar arrrrr = function(x) {\x0a  print("Yo-ho-ho and a bottle of " + x);\x0a};\x0a\x0aarrrrr.call(null, "gum");\x0a\x0afunction galump() {\x0a  return function(x) {\x0a    print("In Soviet Russia, " + x + " codes you!");\x0a  };\x0a}\x0a\x0agalump().call(null, "JavaScript");\x0a\x0a
+!18
+c22:%print:{global}:"Baloo say hello"
+c107:%print:{global}:"Yo-ho-ho and a bottle of gum"
+c225:%print:{global}:"In Soviet Russia, JavaScript codes you!"

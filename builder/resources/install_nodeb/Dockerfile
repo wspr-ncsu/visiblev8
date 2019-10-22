@@ -1,0 +1,6 @@
+ARG BASE_IMAGE=node:lts-jessie
+FROM $BASE_IMAGE
+
+ARG ARTIFACT_DIR=/artifacts
+COPY . $ARTIFACT_DIR
+
