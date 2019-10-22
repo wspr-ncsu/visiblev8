@@ -1,35 +1,118 @@
-# VisibleV8
+# VisibleV8 Functionality Tests
 
-Patches and build tools (with some tests) for turning Chromium into VisibleV8.
+Automated tests used to check that a new build of VisibleV8 (specifically `v8_shell`)
+is capturing the expected events and logging them in the expected format.
 
-The core patches are architecture and platform agnostic, but some of the logging code currently has implementation-detail dependencies on Linux.
-The [optional] build system is definitely Linux-specific.
+## Contents/Overview
 
-## Quick Start
+* `logs/`: expected results and required tools/scripts
+    * `entry.sh`: bootstrap logic for running tests inside container running a vv8 build
+    * `relabel.py`: utility Python script that normalizes irrelevant/ephemeral differences between corresponding log files
+    * `vlp.py`: internal dependency for `relabel.py` (i.e., slow reference-implementation for parsing VV8 logs)
+    * `trace-apis/`: repository of expected-output log files for running the tests under `trace-api` patchsets
+* `src/`: test JS files and other required resources
+* `run.sh`: master launch script that runs tests inside a containerized build of vv8 (iff that container includes `v8_shell` in the `/artifacts` directory)
 
-(These instructions are for building VV8 on Chromium 75.  Find commit hashes of other versions [here](http://omahaproxy.appspot.com/), but make sure there's a matching patchset in `patches/` in this repository.)
+## Log Creation
 
-* Make sure you have [Docker](https://docs.docker.com/install/) and [Python 3](https://www.python.org/downloads/) and a lot of free disk space (e.g., 50GiB) for downloading and building Chromium
-* Clone this repository *(we will call the cloned working directory **$VV8**)*
-* Create an empty working directory on a device with enough space to check out and build Chromium *(we will call this directory **$WD**)*
-* Run `$VV8/builder/tool.py -d $WD checkout 5afa96dadfe803e8a058d6ede0c9c3987405b8d8`
-    * This will take a while: it has to check out all the code and run initial software installation steps
-    * All tool installation will be captured in a Docker container image that can be reused for all future builds of this version of Chromium
-* Run `patch -p1 <$VV8/patches/5afa96dadfe803e8a058/trace-apis.diff` from *inside* `$WD/src/v8` 
-* Run `$VV8/builder/tool.py -d $WD build @std`
-    * This will *really* take a while: it has to build all of Chromium and [Visible]V8, and V8's unit tests, and the Chromium installer Debian package
-    * All these artifacts will be left in `$WD/src/out/Builder`
-* Optionally, run `$VV8/builder/tool.py -d $WD install` to create a new Docker image with the Chromium/VV8 build installed as the entry-point (for running the tests and/or building your own Puppeteer-based applications using Chromium/VV8 for instrumentation)
+One log file per Chromium thread (iff that thread engages VV8's instrumentation), created in the Chrome process's *current working directory* and named `vv8-$TIMESTAMP-$PID-$TID-$THREAD_NAME.log`.  (Some older patchsets, e.g. for Chrome 64, unfortunately omitted the `$PID` segment of the name...)
 
-## Log Output
+Note that single log files may or may not correspond to single page/domain request lifetimes; you'd best have independent sources of data about that, although the `@` context messages in the log stream should help a lot.
+(Also, current internal development of VV8 is moving away from `@` context messages for something more useful, namely, Blink-derived execution context IDs that can be tied to Blink frame contexts.)
 
-VV8 produces trace logs in the browser's current working directory.
-The current builds thus require the Chrome sandbox to be disabled (`--no-sandbox`) so VV8 can create and write to log files on demand.
-**Note** that the default Docker images produced by the `install` step above do *not* include the `--no-sandbox` argument (or any arguments) to the entry-point, `chrome`.
+## Log Format
 
-## Project Contents
+Text is ASCII encoded (all unprintable ASCII characters are \xNN escaped, all code points above ASCII 127 are \uNNNN escaped).
 
-* The build tool source and resources (in `builder/`) simplifies building and installing custom Chromium variants
-* The patchset directory (`patches/`) includes information on what Chromium versions are supported
-* The tests directory (`tests/`) includes JS source and expected log files to help regression-test updates to VV8, and also contains documentation of the log format[s]
+One record per line.  The first character determines the kind of record.
+The rest of the line (characters 1-N) comprise one or more `:` delimited fields.
+(`:` characters existing inside the log data are `\` escaped, as are `\` characters appearing in log data).
+
+### Data Types/Formats
+
+V8 and JS values are formatted according to the following rules:
+
+* String values are flanked by double quotes (e.g., `"string"`) but do not escape internal quotes
+
+* Numeric values are printed "as-is" per usual C++ iostream formatting rules (e.g., `42`, `3.1415926`)
+
+* Regular expression objects are printed as `/PATTERN/`, where *PATTERN* is the non-quoted string representation of the regular expression pattern
+
+* JavaScript's delightful "oddball" values are printed in short form:
+
+	* `#F` for `false`
+
+	* `#T` for `true`
+
+	* `#N` for `null`
+
+	* `#U` for `undefined
+
+	* `#?` for any other V8-specific oddball type that leaks into the log data
+
+* Functions are printed as their string names (**not** quoted); anonymouse functions are `<anonymous>`
+
+* Objects are printed as `{Constructor}` where **Constructor** is the name of the function that constructed the object
+
+* V8's internal object representation is complex and full of special cases; if the logging code ever encounters a value it isn't sure about, it logs it as a single `?`
+
+
+### Record Types/Formats
+
+* `~`: (possibly) new Isolate context (basically, a namespace for all script IDs/etc.)
+
+	* First (only) field: Isolate address (i.e., a per-process-unique opaque identifier)
+
+* `@`: (possibly) new `window.origin` value of current isolate/context
+
+	* First (only) field: either the [quoted] JavaScript string value retrieved from the property, or `?` if that's unavailable
+
+* `$`: script provenance (from HTML, JS file, `eval`, ...)
+
+	* First field: new script's integer ID
+
+	* Second field: either the new script's name/URL (a quoted JS string), or the parent script's script ID (in cases where this script was `eval`'d into existence)
+
+	* Third field: unquoted JS string containing full script source
+
+* `!`: execution context (subsequent log entries running THIS script context)
+	
+	* First (only) field: active script ID (in the current Isolate script-ID-space)
+
+* `c`: function call
+	
+	* First field: character offset within script
+
+	* Second field: function object/name
+	
+	* Third field: receiver (`this` value)
+
+	* Rest of fields: positional arguments to function
+
+* `n`: "construction" function call (e.g., `new Foo(1, 2, 3)`)
+
+	* First field: character offset within script
+
+	* Second field: function object/name
+
+	* Rest of fields: positional arguments to function
+
+* `g`: property value get
+
+	* First field: character offset within script
+	
+	* Second field: owning object
+
+	* Third field: property name/index
+
+* `s`: property value set
+
+	* First field: character offset within script
+
+	* Second field: owning object
+
+	* Third field: property name/index
+
+	* Fourth field: new value (arbitrary type)
+
 
