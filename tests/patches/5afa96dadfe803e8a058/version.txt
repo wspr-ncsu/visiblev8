@@ -1,2 +1,0 @@
-Chrome 75.0.3770.100
-Commit 5afa96dadfe803e8a058d6ede0c9c3987405b8d8

@@ -1,2 +1,0 @@
-Chrome 71.0.3578.98
-Commit c2bec8045f7ad3ece1c5d80236183a21c1fac3f5
