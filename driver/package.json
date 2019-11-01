@@ -1,0 +1,15 @@
+{
+  "name": "vv8-driver",
+  "version": "1.0.0",
+  "description": "Example puppeteer-based driver app for crawling URLs with VV8.",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Jordan Jueckstock <jjuecks@ncsu.edu>",
+  "license": "BSD-3-Clause",
+  "dependencies": {
+    "commander": "^4.0.0",
+    "puppeteer": "^1.13.0"
+  }
+}
