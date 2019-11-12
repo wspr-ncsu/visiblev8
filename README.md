@@ -19,6 +19,7 @@ The [optional] build system is definitely Linux-specific.
 * Run `$VV8/builder/tool.py -d $WD build @std`
     * This will *really* take a while: it has to build all of Chromium and [Visible]V8, and V8's unit tests, and the Chromium installer Debian package
     * All these artifacts will be left in `$WD/src/out/Builder`
+    * You can specify one or more of Chromium's Ninja build targets in place of our magic placeholder `@std` (e.g., `d8`)
 * Optionally, run `$VV8/builder/tool.py -d $WD install` to create a new Docker image with the Chromium/VV8 build installed as the entry-point (for running the tests and/or building your own Puppeteer-based applications using Chromium/VV8 for instrumentation)
 
 ## Log Output
