@@ -34,3 +34,20 @@ The current builds thus require the Chrome sandbox to be disabled (`--no-sandbox
 * The patchset directory (`patches/`) includes information on what Chromium versions are supported
 * The tests directory (`tests/`) includes JS source and expected log files to help regression-test updates to VV8, and also contains documentation of the log format[s]
 
+## Research Paper
+
+You can read more about the details of our work in the following research paper:
+
+**VisibleV8: In-browser Monitoring of JavaScript in the Wild** [[PDF]](https://kapravelos.com/publications/vv8-imc19.pdf)  
+Jordan Jueckstock, Alexandros Kapravelos  
+*Proceedings of the ACM Internet Measurement Conference (IMC), 2019*
+
+If you use *VisibleV8* in your research, consider citing our work using this **Bibtex** entry:
+``` tex
+@conference{vv8-imc19,
+  title = {{VisibleV8: In-browser Monitoring of JavaScript in the Wild}},
+  author = {Jueckstock, Jordan and Kapravelos, Alexandros},
+  booktitle = {{Proceedings of the ACM Internet Measurement Conference (IMC)}},
+  year = {2019}
+}
+```
