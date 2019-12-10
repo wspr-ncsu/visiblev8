@@ -2,11 +2,17 @@
 # Run the VisibleV8 tests inside an installed container (must have both v8_shell and unittests inside /artifacts)
 #################################################################################################################
 
+if [ "$1" = "-x" ]; then
+  PRIV="--privileged"
+  shift
+else
+  PRIV=""
+fi
 IMAGE="$1"
 SUITE="$2"
 
 if [ -z "$IMAGE" -o -z "$SUITE" ]; then
-    echo "usage: $0 DOCKER_IMAGE OUTPUT_SUITE"
+    echo "usage: $0 [-x] DOCKER_IMAGE OUTPUT_SUITE"
     echo
     echo "Available output suites:"
     find "$(dirname $0)/logs" -mindepth 1 -maxdepth 1 -type d -name "[a-z]*" -exec basename '{}' \;
@@ -22,7 +28,7 @@ if [ ! -d "$SUITE_DIR" ]; then
     exit 1
 fi
 
-docker run --rm \
+docker run $PRIV --rm \
     -v "$SRC_DIR:/testsrc:ro" \
     -v "$TOOLS_DIR:/tools:ro" \
     -v "$SUITE_DIR:/expected:ro" \

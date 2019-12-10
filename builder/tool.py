@@ -83,7 +83,7 @@ def docker_check_image(image_name: str) -> bool:
     return bool(raw)
 
 
-def docker_run_builder(cname: str, iname: str, entry: str, *args, setup_mount: str = None, work_mount: str = None, setup_var="SETUP", work_var="WORKSPACE"):
+def docker_run_builder(cname: str, iname: str, entry: str, *args, setup_mount: str = None, work_mount: str = None, setup_var="SETUP", work_var="WORKSPACE", privileged=False):
     '''Utility helper to run our builder containers without redundancy.
     Runs the container in the foreground and without automatic cleanup (i.e., no '-d' or '--rm' flags).
     Raises an exception if the docker client executable returns a non-0 exit status.
@@ -94,6 +94,7 @@ def docker_run_builder(cname: str, iname: str, entry: str, *args, setup_mount: s
     Passes on any/all <args>.
     If <work_mount> is provided, bind "/work" to <work_mount> and set the ENV var "<work_var>=/work".
     If <setup_mount> is provided, bind "/setup" to <setup_mount> and set the ENV var "<setup_var>=/setup".
+    If <privileged> is True, pass "--privileged" as a docker option (helpful for working around SELinux issues)
     '''
     cwd = os.path.dirname(entry) or '/'
     ep = './' + os.path.basename(entry)
@@ -111,6 +112,9 @@ def docker_run_builder(cname: str, iname: str, entry: str, *args, setup_mount: s
         docker_args += [
             '-v', '%s:/setup:ro' % os.path.realpath(setup_mount),
             '-e', '%s=/setup' % setup_var]
+
+    if privileged:
+        docker_args.append('--privileged')
 
     docker_args += [
         '-w', cwd,
@@ -149,7 +153,7 @@ def get_builder_image(args) -> str:
     # Spin up the base image running the given scripts
     cname = "builder-tool-provision-{0}".format(os.getpid())
     logging.info("Running _provision/entry.sh inside image '{0}' (name {1})".format(BUILDER_BASE_IMAGE, cname))
-    docker_run_builder(cname, BUILDER_BASE_IMAGE, "/setup/entry.sh", commit, setup_mount=setup_dir, work_mount=args.root)
+    docker_run_builder(cname, BUILDER_BASE_IMAGE, "/setup/entry.sh", commit, setup_mount=setup_dir, work_mount=args.root, privileged=args.privileged_docker_run)
 
     # If all of the above succeeded, it's time to COMMIT that resulting image
     logging.info("Committing state of {0} as '{1}'".format(cname, tagged_name))
@@ -186,7 +190,8 @@ def do_checkout(args):
     docker_run_builder(cname, builder_image, 
                        "/setup/entry.sh", args.commit, 
                        work_mount=args.root, 
-                       setup_mount=setup_dir)
+                       setup_mount=setup_dir,
+                       privileged=args.privileged_docker_run)
 
     # Clean up the dangling container itself (no need to snapshot first)
     logging.info("Deleting container {0}".format(cname))
@@ -220,8 +225,12 @@ def do_shell(args):
 
     # Run the builder container with bash as the entry point 
     cname = "builder-tool-shell-{0}".format(os.getpid())
-    docker_args = [
-        'docker', 'run', '--rm', '-it',
+    docker_args = ['docker', 'run', '--rm', '-it']
+
+    if args.privileged_docker_run:
+        docker_args.append('--privileged')
+
+    docker_args += [
         '--name', cname,
         '-v', '%s:/work' % os.path.realpath(args.root),
         '-v', '%s:/setup:ro' % setup_dir,
@@ -304,7 +313,8 @@ def do_build(args):
     docker_run_builder(cname, builder_image, 
                        "/setup/entry.sh", *cargs,
                        work_mount=args.root, 
-                       setup_mount=setup_dir)
+                       setup_mount=setup_dir,
+                       privileged=args.privileged_docker_run)
 
     # Clean up the dangling container itself (no need to snapshot first here)
     logging.info("Deleting container {0}".format(cname))
@@ -373,6 +383,8 @@ def main(argv):
     ap.add_argument('-d', '--directory', dest="root", metavar="PATH", 
                     default=os.getcwd(),
                     help="Work on (or create) a Chromium source tree rooted inside PATH")
+    ap.add_argument('-x', '--privileged-docker-run', dest="privileged_docker_run", action="store_true", default=False,
+                    help="Pass '--privileged' to docker-run (i.e., work around SELinux infelicities)")
     ap.set_defaults(handler=None)
     subs = ap.add_subparsers()
 
