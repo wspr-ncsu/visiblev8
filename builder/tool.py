@@ -29,7 +29,6 @@ BUILDER_BASE_IMAGE = "ubuntu:xenial"
 DEBUG_OPTIONS = [
     "enable_nacl=false",
     "is_debug=true",
-    "is_asan=true",
     "v8_enable_debugging_features=true",
     "v8_enable_object_print=true",
     "v8_optimized_debug=false",
