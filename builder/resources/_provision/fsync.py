@@ -40,7 +40,7 @@ def reset_dirty_subtree(path):
 def try_sync():
     try:
         subprocess.check_output([GCLIENT, "sync",
-            "--disable-syntax-validation",
+            #"--disable-syntax-validation",
             "--no-history",
             "--with_branch_heads",
             "--with_tags",
