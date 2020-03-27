@@ -1,125 +1,80 @@
 package main
 
 import (
-	"bytes"
 	"encoding/binary"
 	"flag"
+	"fmt"
+	"io"
 	"log"
 	"net"
 	"os"
+	"path/filepath"
 	"time"
 )
 
-type logStream struct {
-	fd *os.File
-	ts time.Time
-}
+func handleStream(conn net.Conn, logTimeout time.Duration) {
+	defer conn.Close()
+	addr := conn.RemoteAddr().String()
 
-type msgMode uint8
+	if err := conn.SetReadDeadline(time.Now().Add(logTimeout)); err != nil {
+		panic(fmt.Errorf("%s: unable to set read timeout: %w", addr, err))
+	}
+	var filenameLength uint32
+	if err := binary.Read(conn, binary.BigEndian, &filenameLength); err != nil {
+		panic(fmt.Errorf("%s: unable to read header length: %w", addr, err))
+	}
+	rawFilename := make([]byte, filenameLength)
+	if _, err := io.ReadFull(conn, rawFilename); err != nil {
+		panic(fmt.Errorf("%s: unable to read filename: %w", addr, err))
+	}
 
-const (
-	msgModeOpen msgMode = 1 << iota
-	msgModeWrite
-	msgModeFlush
-	msgModeClose
-)
+	filename := filepath.Base(string(rawFilename))
+	fd, err := os.Create(filename)
+	if err != nil {
+		panic(fmt.Errorf("%s: unable to open file '%s' for writing: %w", addr, filename, err))
+	}
+	defer fd.Close()
+	log.Printf("%s: logging to '%s'\n", addr, filename)
 
-type msgHeader struct {
-	Cookie uint32  // Arbitrary stream ID handle
-	Mode   msgMode // Bitmask used for operations
+	var buffer [4096]byte
+	for {
+		n, readErr := conn.Read(buffer[:])
+		for sofar := 0; sofar < n; {
+			m, writeErr := fd.Write(buffer[sofar:n])
+			if writeErr != nil {
+				panic(fmt.Errorf("%s: failed to write to file %w", addr, writeErr))
+			}
+			sofar += m
+		}
+		if readErr != nil {
+			if readErr != io.EOF {
+				panic(fmt.Errorf("%s: failed to read from socket %w", addr, readErr))
+			} else {
+				log.Printf("%s: EOF on socket, closing down\n", addr)
+				return
+			}
+		}
+	}
 }
 
 func main() {
 	var bindAddr string
 	var logTimeoutSec int
 
-	flag.StringVar(&bindAddr, "bindAddr", "127.0.0.1:52528", "Bind/receive on this UDP endpoint")
+	flag.StringVar(&bindAddr, "bindAddr", "127.0.0.1:52528", "Bind/receive on this TCP endpoint")
 	flag.IntVar(&logTimeoutSec, "logTimeout", 300, "Timeout/close log streams after this many seconds of inactivity")
 	flag.Parse()
 	logTimeoutDuration := time.Duration(logTimeoutSec) * time.Second
 
-	server, err := net.ListenPacket("udp", bindAddr)
+	server, err := net.Listen("tcp", bindAddr)
 	if err != nil {
 		log.Fatalf("unable to bind/listen on %s: %v\n", bindAddr, err)
 	}
-	rawMsg := make([]byte, 65536)
-	logMap := make(map[uint32]*logStream)
 	for {
-		if err := server.SetDeadline(time.Now().Add(time.Duration(logTimeoutDuration))); err != nil {
-			log.Fatalf("unable to set timeout on socket: %v\n", err)
-		}
-		recd, from, err := server.ReadFrom(rawMsg)
-		now := time.Now()
+		conn, err := server.Accept()
 		if err != nil {
-			netErr, ok := err.(net.Error)
-			if ok && netErr.Timeout() {
-				timeouts := make([]uint32, 0, len(logMap))
-				for cookie, stream := range logMap {
-					idleSec := now.Sub(stream.ts).Seconds()
-					if idleSec >= float64(logTimeoutSec) {
-						log.Printf("stream %#x has been idle for %f seconds and will be dropped", cookie, idleSec)
-						timeouts = append(timeouts, cookie)
-					}
-				}
-				for _, cookie := range timeouts {
-					stream := logMap[cookie]
-					if err := stream.fd.Close(); err != nil {
-						log.Printf("stream %#x from %v: close error %v (ignoring)\n", cookie, from, err)
-					}
-					delete(logMap, cookie)
-				}
-			} else {
-				log.Fatalf("error reading from socket: %v\n", err)
-			}
-		} else {
-			msg := bytes.NewReader(rawMsg[:recd])
-			var header msgHeader
-			if err := binary.Read(msg, binary.LittleEndian, &header); err != nil {
-				log.Printf("from %v: malformed message header %v (ignoring)\n", from, err)
-				continue
-			}
-			body := rawMsg[binary.Size(header):recd]
-
-			var stream *logStream
-			if (header.Mode & msgModeOpen) == msgModeOpen {
-				filename := string(body)
-				fd, err := os.Create(filename)
-				if err != nil {
-					log.Fatalf("stream %#x from %v: error opening file '%s' %v (ignoring)\n", header.Cookie, from, filename, err)
-					continue
-				}
-				stream = &logStream{fd, now}
-				logMap[header.Cookie] = stream
-			} else {
-				var ok bool
-				stream, ok = logMap[header.Cookie]
-				if !ok {
-					log.Printf("from %v: unknown stream %#x accessed (%#b, %d bytes; ignoring)", from, header.Cookie, header.Mode, len(body))
-					continue
-				}
-				stream.ts = now
-			}
-
-			if (header.Mode & msgModeWrite) == msgModeWrite {
-				if _, err := stream.fd.Write(body); err != nil {
-					log.Printf("stream %#x from %v: write error %v (ignoring)\n", header.Cookie, from, err)
-					continue
-				}
-			}
-
-			if (header.Mode & msgModeFlush) == msgModeFlush {
-				if err := stream.fd.Sync(); err != nil {
-					log.Printf("stream %#x from %v: sync error %v (ignoring)\n", header.Cookie, from, err)
-					continue
-				}
-			}
-
-			if (header.Mode & msgModeClose) == msgModeClose {
-				if err := stream.fd.Close(); err != nil {
-					log.Printf("stream %#x from %v: close error %v (ignoring)\n", header.Cookie, from, err)
-				}
-				delete(logMap, header.Cookie)
-			}
+			log.Fatalf("unable to accept connection: %v\n", err)
 		}
+		go handleStream(conn, logTimeoutDuration)
 	}
 }

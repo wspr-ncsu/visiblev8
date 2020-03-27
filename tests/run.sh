@@ -10,9 +10,10 @@ else
 fi
 IMAGE="$1"
 SUITE="$2"
+VV8_LOG_DIR="$3"
 
 if [ -z "$IMAGE" -o -z "$SUITE" ]; then
-    echo "usage: $0 [-x] DOCKER_IMAGE OUTPUT_SUITE"
+    echo "usage: $0 [-x] DOCKER_IMAGE OUTPUT_SUITE [VV8_LOG_DIR]"
     echo
     echo "Available output suites:"
     find "$(dirname $0)/logs" -mindepth 1 -maxdepth 1 -type d -name "[a-z]*" -exec basename '{}' \;
@@ -28,12 +29,29 @@ if [ ! -d "$SUITE_DIR" ]; then
     exit 1
 fi
 
+if [ -d "$VV8_LOG_DIR" ]; then
+	WORK_DIR_HOST="$VV8_LOG_DIR"
+else
+	WORK_DIR_HOST=$(mktemp -d tmp.vv8test.XXXX)
+	if [ ! -z "$VV8_LOG_DIR" ]; then
+		echo "specified log dir, '$VV8_LOG_DIR', is not a directory; creating '$WORK_DIR_HOST' instead..."
+	fi
+	
+fi
+echo "Using '$WORK_DIR_HOST' as the working directory/logfile directory..."
+
 docker run $PRIV --rm \
     -v "$SRC_DIR:/testsrc:ro" \
     -v "$TOOLS_DIR:/tools:ro" \
     -v "$SUITE_DIR:/expected:ro" \
+    -v "$WORK_DIR_HOST:/work" \
     --entrypoint /bin/sh \
-    --workdir /tmp \
+    --workdir /work \
+    --net host \
     "$IMAGE" \
     "/tools/entry.sh"
 
+if [ "$VV8_LOG_DIR" != "$WORK_DIR_HOST" ]; then
+	echo "Purging temp working dir '$WORK_DIR_HOST'...";
+	rm -rf "$WORK_DIR_HOST"
+fi

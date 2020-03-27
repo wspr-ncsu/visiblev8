@@ -1,23 +1,51 @@
 #!/usr/bin/env python3
 import logging
 import os
-import socket
 import select
-import sys
+import socket
 import struct
+import sys
+import threading
 import time
-
+from contextlib import closing
 
 BIND_HOST = os.environ.get("BIND_HOST", "localhost")
 BIND_PORT = int(os.environ.get("BIND_PORT", "52528"), 10)
 LOG_TIMEOUT = int(os.environ.get("LOG_TIMEOUT", "300"), 10)
 
-BUFSIZE = 64 * 1024
-MSG_HEADER = struct.Struct("<IB")
-CMD_FLAG_OPEN = 0x01
-CMD_FLAG_WRITE = 0x02
-CMD_FLAG_FLUSH = 0x04
-CMD_FLAG_CLOSE = 0x08
+LENGTH_FIELD = struct.Struct("!I")
+
+
+def sock_read_all(conn, rlen) -> bytes:
+    chunks = []
+    recd = 0
+    while recd < rlen:
+        chunk = conn.recv(rlen - recd)
+        chunks.append(chunk)
+        recd += len(chunk)
+    return b"".join(chunks)
+
+
+def handle_connection(conn, addr):
+    with closing(conn):
+        (hlen,) = LENGTH_FIELD.unpack(sock_read_all(conn, LENGTH_FIELD.size))
+        filename = sock_read_all(conn, hlen).decode("utf8")
+        logging.info(f"{addr}: opening {filename}")
+        with open(filename, "ab") as fd:
+            while True:
+                rset, _, xset = select.select([conn], [], [], LOG_TIMEOUT)
+                if xset:
+                    logging.error(f"{addr}: got error condition on {xsel}; aborting...")
+                    return
+                elif rset:
+                    chunk = conn.recv(4096)
+                    if not chunk:
+                        logging.info(f"{addr}: end-of-stream")
+                        return
+                    fd.write(chunk)
+                else:
+                    logging.warning(f"{addr}: inactivity timeout")
+                    return
 
 
 def main(argv):
@@ -25,56 +53,15 @@ def main(argv):
     log_map = {}
     log_tlu = {}
 
-    serv = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    serv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     serv.bind((BIND_HOST, BIND_PORT))
 
+    serv.listen(5)
     while True:
-        rsel, _, xsel = select.select([serv], [], [serv], LOG_TIMEOUT)
-        now = time.time()
-        if xsel:
-            logging.error(f"got error condition on {xsel}; aborting...")
-            sys.exit(1)
-        if rsel:
-            data, _, _, addr = serv.recvmsg(BUFSIZE)
-            try:
-                header, body = data[: MSG_HEADER.size], data[MSG_HEADER.size :]
-                cookie, cmd = MSG_HEADER.unpack(header)
-
-                if cmd & CMD_FLAG_OPEN:
-                    fd = log_map[cookie] = open(body, "ab")
-                    logging.info(f"new cookie {cookie:#x} ({cmd:#b}): '{body}'")
-                else:
-                    fd = log_map.get(cookie)
-                    if not fd:
-                        logging.error(
-                            f"access {cmd:#b} to unknown cookied {cookie:#x} from {addr} (ignoring)"
-                        )
-                        continue
-                log_tlu[cookie] = now
-
-                if cmd & CMD_FLAG_WRITE:
-                    fd.write(body)
-
-                if cmd & CMD_FLAG_FLUSH:
-                    fd.flush()
-
-                if cmd & CMD_FLAG_CLOSE:
-                    fd.close()
-                    del log_map[cookie]
-            except Exception:
-                logging.exception(f"error processing message from {addr} (ignoring)")
-
-        timeouts = [
-            cookie
-            for cookie, last_time in log_tlu.items()
-            if now - last_time >= LOG_TIMEOUT
-        ]
-        for cookie in timeouts:
-            logging.warning(
-                f"log for cookie {cookie:#x} has seen no activity in at least {LOG_TIMEOUT} seconds; closing..."
-            )
-            log_map.pop(cookie).close()
-            del log_tlu[cookie]
+        conn, addr = serv.accept()
+        threading.Thread(
+            target=handle_connection, args=(conn, addr), daemon=True
+        ).start()
 
 
 if __name__ == "__main__":

@@ -203,7 +203,7 @@ index 56756c161a..3dcd0a09e9 100644
    builder()->SetExpressionPosition(expr);
    switch (assign_type) {
 diff --git a/src/runtime/runtime-test.cc b/src/runtime/runtime-test.cc
-index 1b0b161702..79c155983d 100644
+index 1b0b161702..37fe03e3a1 100644
 --- a/src/runtime/runtime-test.cc
 +++ b/src/runtime/runtime-test.cc
 @@ -6,6 +6,18 @@
@@ -225,7 +225,7 @@ index 1b0b161702..79c155983d 100644
  
  #include "src/api-inl.h"
  #include "src/arguments-inl.h"
-@@ -767,6 +779,561 @@ RUNTIME_FUNCTION(Runtime_TraceExit) {
+@@ -767,6 +779,569 @@ RUNTIME_FUNCTION(Runtime_TraceExit) {
    return obj;  // return TOS
  }
  
@@ -342,14 +342,13 @@ index 1b0b161702..79c155983d 100644
 +// TLS storage slot key for per-thread output streams for our trace logging
 +static pthread_key_t visv8_out_key;
 +
-+// Type used to abstract an ostream-like logging interface for UDP backend logging
++// Type used to abstract an ostream-like logging interface for TCP backend logging
 +class VisV8LogStream {
-+  uint32_t          _cookie;  // Arbitrary 32-bit cookie (derived from PID/TID)
 +  int               _sock;    // Open socket (UDP) for sending log data
 +  std::ostrstream   _out;     // In-memory ostream for collecting log data to send
 +public:
 +  VisV8LogStream(const VisV8LogStream& lhs) = delete;
-+  VisV8LogStream() : _cookie(0), _sock(-1) {
++  VisV8LogStream() : _sock(-1) {
 +    struct sockaddr_in sa = {
 +        .sin_family = AF_INET,
 +        .sin_port = htons(52528),
@@ -357,16 +356,17 @@ index 1b0b161702..79c155983d 100644
 +            .s_addr = inet_addr("127.0.0.1"),
 +        }
 +    };
-+    if ((_sock = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
++    if ((_sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
 +      perror("socket");
 +      abort();
 +    }
 +    if (connect(_sock, (const sockaddr *)&sa, sizeof sa)) {
 +      perror("connect");
-+      abort();
++      //abort();
 +    }
 +    if (shutdown(_sock, SHUT_RD)) {
 +      perror("shutdown");
++      //abort();
 +    }
 +    _open();
 +  }
@@ -386,12 +386,17 @@ index 1b0b161702..79c155983d 100644
 +
 +private:
 +  void _open() {
-+    _cookie = (base::OS::GetCurrentProcessId() << 16) | base::OS::GetCurrentThreadId();
-+    _header(0x01); // open
-+    _out << "vv8-" << (long)base::OS::TimeCurrentMillis()
-+         << "-" << base::OS::GetCurrentProcessId()
-+         << "-" << base::OS::GetCurrentThreadId()
-+         << "-<unknown>.0.log";
++    char log_name[256];
++    snprintf(log_name, sizeof log_name, "vv8-%ld-%d-%d-unknown.0.log",
++        (long)base::OS::TimeCurrentMillis(),
++        base::OS::GetCurrentProcessId(),
++        base::OS::GetCurrentThreadId());
++    size_t lnlen = strlen(log_name);
++    uint32_t hdr = htonl(lnlen);
++
++    _reset();
++    _out.write(reinterpret_cast<const char *>(&hdr), sizeof hdr);
++    _out.write(log_name, lnlen);
 +    _send();
 +  }
 +  void _reset() {
@@ -399,16 +404,19 @@ index 1b0b161702..79c155983d 100644
 +    _out.seekp(0);
 +    _out.clear();
 +  }
-+  void _header(uint8_t mode) {
-+    _reset();
-+    _out.write(reinterpret_cast<const char *>(&_cookie), sizeof _cookie);
-+    _out.put(static_cast<char>(mode));
-+  }
 +  void _send() {
-+    int len = _out.pcount();
-+    if (len > 5) {
-+      send(_sock, _out.str(), len, 0);  // YOLO! fire and forget...
-+      _header(0x06); // write|flush 
++    size_t len = _out.pcount();
++    char *buf = _out.str();
++    if (len > 0) {
++      for (size_t sofar = 0; sofar < len; ) {
++        ssize_t sent = send(_sock, &buf[sofar], len - sofar, 0);
++        if (sent < 0) {
++          perror("send");
++          //abort();
++        }
++        sofar += sent;
++      }
++      _reset();
 +    }
 +  }
 +};
