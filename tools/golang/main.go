@@ -57,14 +57,14 @@ func main() {
 				for cookie, stream := range logMap {
 					idleSec := now.Sub(stream.ts).Seconds()
 					if idleSec >= float64(logTimeoutSec) {
-						log.Printf("stream 0x%x has been idle for %f seconds and will be dropped", cookie, idleSec)
+						log.Printf("stream %#x has been idle for %f seconds and will be dropped", cookie, idleSec)
 						timeouts = append(timeouts, cookie)
 					}
 				}
 				for _, cookie := range timeouts {
 					stream := logMap[cookie]
 					if err := stream.fd.Close(); err != nil {
-						log.Printf("close error for cookie 0x%x from %v: %v (ignoring)\n", cookie, from, err)
+						log.Printf("stream %#x from %v: close error %v (ignoring)\n", cookie, from, err)
 					}
 					delete(logMap, cookie)
 				}
@@ -75,16 +75,17 @@ func main() {
 			msg := bytes.NewReader(rawMsg[:recd])
 			var header msgHeader
 			if err := binary.Read(msg, binary.LittleEndian, &header); err != nil {
-				log.Printf("malformed message header from %v: %v (ignoring)\n", from, err)
+				log.Printf("from %v: malformed message header %v (ignoring)\n", from, err)
 				continue
 			}
 			body := rawMsg[binary.Size(header):recd]
 
 			var stream *logStream
 			if (header.Mode & msgModeOpen) == msgModeOpen {
-				fd, err := os.Create(string(body))
+				filename := string(body)
+				fd, err := os.Create(filename)
 				if err != nil {
-					log.Fatalf("error opening file '%s' for cookie 0x%x: %v (ignoring)\n", body, header.Cookie, err)
+					log.Fatalf("stream %#x from %v: error opening file '%s' %v (ignoring)\n", header.Cookie, from, filename, err)
 					continue
 				}
 				stream = &logStream{fd, now}
@@ -93,7 +94,7 @@ func main() {
 				var ok bool
 				stream, ok = logMap[header.Cookie]
 				if !ok {
-					log.Printf("access (0x%x) to unknown cookie 0x%x from %v (ignoring)", header.Mode, header.Cookie, from)
+					log.Printf("from %v: unknown stream %#x accessed (%#b, %d bytes; ignoring)", from, header.Cookie, header.Mode, len(body))
 					continue
 				}
 				stream.ts = now
@@ -101,21 +102,21 @@ func main() {
 
 			if (header.Mode & msgModeWrite) == msgModeWrite {
 				if _, err := stream.fd.Write(body); err != nil {
-					log.Printf("write error for cookie 0x%x from %v: %v (ignoring)\n", header.Cookie, from, err)
+					log.Printf("stream %#x from %v: write error %v (ignoring)\n", header.Cookie, from, err)
 					continue
 				}
 			}
 
 			if (header.Mode & msgModeFlush) == msgModeFlush {
 				if err := stream.fd.Sync(); err != nil {
-					log.Printf("sync error for cookie 0x%x from %v: %v (ignoring)\n", header.Cookie, from, err)
+					log.Printf("stream %#x from %v: sync error %v (ignoring)\n", header.Cookie, from, err)
 					continue
 				}
 			}
 
 			if (header.Mode & msgModeClose) == msgModeClose {
 				if err := stream.fd.Close(); err != nil {
-					log.Printf("close error for cookie 0x%x from %v: %v (ignoring)\n", header.Cookie, from, err)
+					log.Printf("stream %#x from %v: close error %v (ignoring)\n", header.Cookie, from, err)
 				}
 				delete(logMap, header.Cookie)
 			}
