@@ -52,7 +52,11 @@ MAGIC_TARGETS = {
 }
 
 BASELINE_ARTIFACTS = [
-    'v8_shell', 'unittests', 'icudtl.dat', 'natives_blob.bin', 'snapshot_blob.bin',
+    'v8_shell', 
+    'unittests', 
+    'icudtl.dat',  
+    'snapshot_blob.bin',
+    'natives_blob.bin', # pre-Chrome 80 only
 ]
 
 
@@ -358,7 +362,10 @@ def do_install(args):
     with tempfile.TemporaryDirectory() as scratch_dir:
         # Dump artifacts
         for f in set(artifacts):
-            shutil.copy(f, scratch_dir)
+            try:
+                shutil.copy(f, scratch_dir)
+            except Exception as ex:
+                logging.error("failed to copy artifact '{0}': {1}".format(f, ex))
 
         # Trigger docker build off the scratch-directory contents
         docker_args = [

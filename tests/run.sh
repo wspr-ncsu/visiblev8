@@ -30,9 +30,9 @@ if [ ! -d "$SUITE_DIR" ]; then
 fi
 
 if [ -d "$VV8_LOG_DIR" ]; then
-	WORK_DIR_HOST="$VV8_LOG_DIR"
+	WORK_DIR_HOST=$(realpath "$VV8_LOG_DIR")
 else
-	WORK_DIR_HOST=$(mktemp -d tmp.vv8test.XXXX)
+	WORK_DIR_HOST=$(realpath $(mktemp -d tmp.vv8test.XXXX))
 	if [ ! -z "$VV8_LOG_DIR" ]; then
 		echo "specified log dir, '$VV8_LOG_DIR', is not a directory; creating '$WORK_DIR_HOST' instead..."
 	fi
