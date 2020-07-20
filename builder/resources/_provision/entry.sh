@@ -11,7 +11,9 @@ apt update && apt -y install \
 	lsb-release \
 	pkg-config \
 	python \
+	python-pip \
 	python3 \
+	python3-pip \
 	sudo \
 	xz-utils \
 	openjdk-8-jdk

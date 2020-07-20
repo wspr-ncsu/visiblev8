@@ -10,9 +10,11 @@ if [ ! -d "depot_tools" ]; then
 	# No existing depot_tools yet; make sure that's installed (inside the workspace, for stupid reasons [not mine])
 	echo "No depot_tools/ directory; verifying prerequisits and fetching depot_tools..."
 	git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git "$WORKSPACE/depot_tools"
+	export PATH="$PATH:$WORKSPACE/depot_tools"
 	depot_tools/gclient >/dev/null || exit 1
+else
+	export PATH="$PATH:$WORKSPACE/depot_tools"
 fi
-export PATH="$PATH:$WORKSPACE/depot_tools"
 
 if [ ! -d "src" ]; then
 	# No existing fetch--do that first
