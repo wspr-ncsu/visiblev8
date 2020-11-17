@@ -6,6 +6,8 @@ import json
 import os
 import sys
 
+from collections import namedtuple
+
 
 VARIANT_MAP = {
     'chrome64': {
@@ -60,9 +62,9 @@ def collect_idl_files(webkit_root):
                 fcount += 1
                 for imp_left, imp_right in idl_implementations(idl_data):
                     try:
-                        imp_map[imp_left].add(imp_right)
+                        imp_map[imp_left].add((imp_right, idl_path))
                     except KeyError:
-                        imp_map[imp_left] = set([imp_right])
+                        imp_map[imp_left] = set([(imp_right, idl_path)])
                 for iface, idef in idl_data.interfaces.items():
                     if 'NamedConstructor' in idef.extended_attributes:
                         alias_map[idef.extended_attributes['NamedConstructor']] = iface
@@ -91,7 +93,7 @@ def dump_interfaces(idl_map, imp_map, alias_map):
 
     # Handle explicit interface implementation
     for iname, idef in true_imap.items():
-        for impi in imp_map.get(iname, []):
+        for impi, _ in imp_map.get(iname, []):
             idef.merge(true_imap[impi])
 
     # Dump
@@ -130,6 +132,48 @@ def dump_interfaces(idl_map, imp_map, alias_map):
 
     json.dump(tree, sys.stdout)
 
+def dump_provenance(idl_map, imp_map, alias_map):
+    # Start from the basic definitions
+    provenances = list()
+
+    # API definition record
+    APIDef = namedtuple("APIDef", "interface, parent, alias, api, implorincl, type, idl")
+    for iname, ideflist in idl_map.items():
+        # Check for an alias
+        alias = alias_map[iname] if iname in alias_map else "N/A"
+
+        # Go over all the definitions
+        for idl_path, idef in ideflist:
+            parent = idef.parent or "N/A"
+            # properties
+            for a in idef.attributes:
+                if a.name:
+                    provenances.append(APIDef(iname, parent, alias, a.name, "False", "property", idl_path))
+            # methods
+            for op in idef.operations:
+                if op.name:
+                    provenances.append(APIDef(iname, parent, alias, a.name, "False", "method", idl_path))
+
+        # Go over explicit definitions
+        for impi, _ in imp_map.get(iname, []):
+            # Find the explicit interface
+            if impi in idl_map:
+                # Get the definitions for the implemented interface
+                ideflist = idl_map[impi]
+
+                # Go over all the definitions
+                for idl_path, idef in ideflist:
+                    parent = idef.parent or "N/A"
+                    # properties
+                    for a in idef.attributes:
+                        if a.name:
+                            provenances.append(APIDef(iname, parent, alias, a.name, "True", "property", idl_path))
+                    # methods
+                    for op in idef.operations:
+                        if op.name:
+                            provenances.append(APIDef(iname, parent, alias, a.name, "True", "method", idl_path))
+
+    print >>sys.stdout, os.linesep.join(",".join(p) for p in provenances)
 
 def setup_path(chrome_root):
     global VARIANT
@@ -157,8 +201,8 @@ def setup_path(chrome_root):
 
 
 def main(argv):
-    if len(argv) < 2:
-        print >>sys.stderr, "usage: %s CHROME_SOURCE_ROOT" % (argv[0],)
+    if len(argv) < 3:
+        print >>sys.stderr, "usage: %s CHROME_SOURCE_ROOT OUT_TYPE(json|csv)" % (argv[0],)
         sys.exit(1)
 
     chrome_root = argv[1]
@@ -166,8 +210,13 @@ def main(argv):
 
     idl_map, imp_map, alias_map = collect_idl_files(webkit_root)
     #print >> sys.stderr, '\n'.join(sorted(idl_map.keys()))
-    dump_interfaces(idl_map, imp_map, alias_map)
-
+    if argv[2] == "json":
+        dump_interfaces(idl_map, imp_map, alias_map)
+    elif argv[2] == "csv":
+        dump_provenance(idl_map, imp_map, alias_map)
+    else:
+        print >>sys.stderr, "Unknown out type '%s'" % argv[2]
+        sys.exit(1)
 
 if __name__ == "__main__":
     main(sys.argv)
