@@ -474,7 +474,7 @@ index 76686a9d62..f522772d67 100644
    builder()->SetExpressionPosition(expr);
    switch (assign_type) {
 diff --git a/src/runtime/runtime-test.cc b/src/runtime/runtime-test.cc
-index 0dd7368e39..c38ec5d095 100644
+index 0dd7368e39..fbc05171b6 100644
 --- a/src/runtime/runtime-test.cc
 +++ b/src/runtime/runtime-test.cc
 @@ -2,8 +2,21 @@
@@ -639,7 +639,7 @@ index 0dd7368e39..c38ec5d095 100644
 +          Handle<Object> property;
 +          // Add the key to the trace logs
 +          myPrintUC16(*key, out, 0, max_len);
-+          out << ':';
++          out << "\\:";
 +          do {
 +            if (!(Object::GetPropertyOrElement(isolate, rcvr, key))
 +                     .ToHandle(&property)) {
