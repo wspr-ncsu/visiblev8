@@ -1,0 +1,20 @@
+~0x562065dcd710
+@?
+$18:"/testsrc/evil.js":var prefix = '(function(){print("';\x0avar suffix = '");})()';\x0a\x0aeval(prefix + "Yahoo!" + suffix); \x0a\x0aeval(prefix + read("/testsrc/fred.txt") + suffix);\x0a\x0a(function() {\x0a  this.eval(prefix + "Shazaam!" + suffix); \x0a})();\x0a\x0aeval('eval("print(\\\\"eval-ception!\\\\")")');\x0a\x0a
+$19:18:(function(){print("Yahoo!");})()
+!19
+c12:%print:{123456,global}:"Yahoo!"
+!18
+c111:%read:{123456,global}:"/testsrc/fred.txt"
+$20:18:(function(){print("FRED!");})()
+!20
+c12:%print:{123456,global}:"FRED!"
+!18
+g170:{123456,global}:"eval"
+$21:18:(function(){print("Shazaam!");})()
+!21
+c12:%print:{123456,global}:"Shazaam!"
+$22:18:eval("print(\\"eval-ception!\\")")
+$23:22:print("eval-ception!")
+!23
+c0:%print:{123456,global}:"eval-ception!"
