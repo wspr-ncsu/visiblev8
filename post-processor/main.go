@@ -108,7 +108,7 @@ func getInputClusters(args []string) (inputClusterMap, error) {
 			inputs[key] = append(inputs[key], logSegment{rank, val})
 		} else {
 			// "@oid" (no input files) or "-" (stdin)
-			inputs[val] = []logSegment{logSegment{0, val}}
+			inputs[val] = []logSegment{{0, val}}
 		}
 	}
 	for _, files := range inputs {
