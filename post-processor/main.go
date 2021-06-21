@@ -20,6 +20,7 @@ import (
 	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 
+	"github.ncsu.edu/jjuecks/vv8-post-processor/callargs"
 	"github.ncsu.edu/jjuecks/vv8-post-processor/causality"
 	"github.ncsu.edu/jjuecks/vv8-post-processor/core"
 	"github.ncsu.edu/jjuecks/vv8-post-processor/elements"
@@ -48,6 +49,7 @@ func nullCtor() (core.Aggregator, error) {
 
 // acceptedOutputFormats is the master map of supported aggregators and their short-names used by the CLI
 var acceptedOutputFormats = map[string]formatAggregator{
+	"callargs":          {"CallArguments", callargs.NewCreateCallArgsAggregator},
 	"Mfeatures":         {"MegaFeatureUsage", mega.NewAggregator},
 	"features":          {"FeatureUsage", features.NewFeatureUsageAggregator},
 	"poly_features":     {"FeatureUsage", features.NewFeatureUsageAggregator},
