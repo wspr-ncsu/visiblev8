@@ -1,0 +1,43 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    project: vpc
+    owner: jjuecks
+  name: vpc-hashbangs-outpost
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vpc-hashbangs-outpost
+      project: vpc
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: vpc-hashbangs-outpost
+        project: vpc
+        owner: jjuecks
+    spec:
+      containers:
+      - env:
+        - name: MONGODB_HOST
+          value: babar.csc.ncsu.edu
+        - name: MONGODB_PORT
+          value: "32770"
+        - name: MONGODB_DB
+          value: vpc
+        - name: REDIS_HOST
+          value: 192.168.42.207
+        image: 192.168.42.206:5000/vv8logs-worker:latest
+        imagePullPolicy: Always
+        name: vpc-hashbangs-outpost-vv8pp
+      - env:
+        - name: CELERY_BROKER_URL
+          value: "redis://192.168.42.207"
+        - name: CELERY_BACKEND_URL
+          value: "redis://192.168.42.207"
+        image: 192.168.42.206:5000/kpww:3
+        imagePullPolicy: Always
+        name: vpc-hashbangs-outpost-kpww
+
