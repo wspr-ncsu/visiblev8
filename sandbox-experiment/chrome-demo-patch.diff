@@ -1,0 +1,124 @@
+diff --git a/sandbox/linux/syscall_broker/broker_client.cc b/sandbox/linux/syscall_broker/broker_client.cc
+index 6b1b5be433899..bf86440162b32 100644
+--- a/sandbox/linux/syscall_broker/broker_client.cc
++++ b/sandbox/linux/syscall_broker/broker_client.cc
+@@ -345,5 +345,33 @@ intptr_t BrokerClient::SIGSYS_Handler(const arch_seccomp_data& args,
+   return broker_client->DispatchSyscall(args);
+ }
+ 
++__attribute__((visibility("default")))
++extern "C" int 
++vv8_connect_to_logging_server(void) {
++  BrokerSimpleMessage message;
++  RAW_CHECK(message.AddIntToMessage(COMMAND_VV8_LOG_SOCKET));
++
++  fprintf(stderr, "VV8: so here we are trying to make the actual IPC call...\n");
++
++  base::ScopedFD returned_fd;
++  BrokerSimpleMessage reply;
++  ssize_t msg_len = message.SendRecvMsgWithFlags(4, 0, &returned_fd, &reply);
++  
++  if (msg_len < 0)
++    return -ENOMEM;
++
++  int return_value = -1;
++  if (!reply.ReadInt(&return_value))
++    return -ENOMEM;
++  if (return_value < 0)
++    return return_value;
++
++  // We have a real file descriptor to return.
++  RAW_CHECK(returned_fd.is_valid());
++  return returned_fd.release();
++}
++
+ }  // namespace syscall_broker
+ }  // namespace sandbox
++
++
+diff --git a/sandbox/linux/syscall_broker/broker_command.h b/sandbox/linux/syscall_broker/broker_command.h
+index 1c4596778b0f5..7c483921ba384 100644
+--- a/sandbox/linux/syscall_broker/broker_command.h
++++ b/sandbox/linux/syscall_broker/broker_command.h
+@@ -42,9 +42,10 @@ enum BrokerCommand {
+   COMMAND_STAT,
+   COMMAND_STAT64,
+   COMMAND_UNLINK,
++  COMMAND_VV8_LOG_SOCKET,
+ 
+   // NOTE: update when adding new commands.
+-  COMMAND_MAX = COMMAND_UNLINK
++  COMMAND_MAX = COMMAND_VV8_LOG_SOCKET,
+ };
+ 
+ using BrokerCommandSet = std::bitset<COMMAND_MAX + 1>;
+diff --git a/sandbox/linux/syscall_broker/broker_host.cc b/sandbox/linux/syscall_broker/broker_host.cc
+index 1cd03a18df809..ac9c8506a647e 100644
+--- a/sandbox/linux/syscall_broker/broker_host.cc
++++ b/sandbox/linux/syscall_broker/broker_host.cc
+@@ -236,6 +236,54 @@ void UnlinkFileForIPC(const BrokerCommandSet& allowed_command_set,
+   RAW_CHECK(message->AddIntToMessage(0));
+ }
+ 
++static int
++vv8_connect_to_logging_server_direct() {
++  int ret = -1;
++  const char *log_host = NULL;
++  const char *log_port = NULL;
++  struct addrinfo hints;
++  struct addrinfo *result = NULL, *rp;
++  int sfd, s;
++
++  memset(&hints, 0, sizeof(hints));
++  hints.ai_family = AF_UNSPEC;
++  hints.ai_socktype = SOCK_STREAM;
++  hints.ai_flags = 0;
++  hints.ai_protocol = 0;
++
++  if ((log_host = getenv(ENV_VV8_LOG_HOST)) == NULL) {
++    log_host = DEFAULT_VV8_LOG_HOST;	
++  }
++  if ((log_port = getenv(ENV_VV8_LOG_PORT)) == NULL) {
++    log_port = DEFAULT_VV8_LOG_PORT;
++  }
++  printf("debug: connecting to %s:%s\n", log_host, log_port);
++
++  s = getaddrinfo(log_host, log_port, &hints, &result);
++  if (s != 0) {
++    fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
++    goto cleanup;
++  }
++  for (rp = result; rp != NULL; rp = rp->ai_next) {
++    sfd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
++    if (sfd < 0) continue;
++    if (connect(sfd, rp->ai_addr, rp->ai_addrlen) != -1) break;
++    close(sfd);
++  }
++  if (rp == NULL) {
++    fprintf(stderr, "could not connect to %s:%s\n", log_host, log_port);
++    goto cleanup;
++  }
++
++  ret = sfd;
++cleanup:
++  if (result != NULL) {
++    freeaddrinfo(result);
++  }
++  return ret;
++}
++
++
+ // Handle a |command_type| request contained in |iter| and write the reply
+ // to |reply|.
+ bool HandleRemoteCommand(const BrokerCommandSet& allowed_command_set,
+@@ -329,6 +377,10 @@ bool HandleRemoteCommand(const BrokerCommandSet& allowed_command_set,
+                        reply);
+       break;
+     }
++    case COMMAND_VV8_LOG_SOCKET: {
++      fprintf(stderr, "Broker got command to create VV8 logging socket!\n");
++      return false;
++    }
+     default:
+       LOG(ERROR) << "Invalid IPC command";
+       return false;
