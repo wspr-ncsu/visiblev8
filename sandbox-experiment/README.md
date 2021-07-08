@@ -8,7 +8,13 @@ This demo is _not_ a working VisibleV8 build; it simply logs a "hello world" kin
 
 Apply the `chrome-demo-patch.diff` patch to `chromium/src` in a Chrome 91 (commit `c1e1dff6f551c4aab8578ec695825cc9b27d51e6`) checkout.
 Apply the `v8-demo-patch.diff` patch to `chromium/src/v8/src` in that same checkout.
+Then build chromium as usual.
 
+## Running
+
+Obviously, you should not use the `--no-sandbox` flag when running chrome anymore. 😄
+
+For the logging to actually work, you need a listener; for quick-and-dirty testing, try: `nc -lk -p 5580` (both host and port can be specified via ENV variables, but the defaults are `localhost:5580`).
 
 ## Comments
 
