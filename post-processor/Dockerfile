@@ -1,5 +1,5 @@
 # Start with "compilation" base image (the Go toolchain)
-FROM golang:1.13 AS gobuild
+FROM golang:1.16-buster AS gobuild
 
 # Copy in the source directory and compile there
 COPY . /build/
