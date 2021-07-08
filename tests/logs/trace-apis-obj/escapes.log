@@ -1,0 +1,5 @@
+~0x562afd7a7710
+@?
+$18:"/testsrc/escapes.js":print("whatever\\nman.  Check this out! \\u00e9 \\uff97");\x0a\x0a
+!18
+c0:%print:{123456,global}:"whatever\x0aman.  Check this out! \u00e9 \uff97"

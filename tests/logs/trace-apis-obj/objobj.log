@@ -1,0 +1,7 @@
+~0x55b379016710
+@?
+$18:"/testsrc/objobj.js":function Blarg(x) {\x0a  this.x = x;\x0a}\x0a\x0aBlarg.prototype.say = print;\x0a\x0aBlarg.prototype.foo = function foo() {\x0a  this.say("foo(" + this['x'] + ")");\x0a}\x0a\x0a\x0avar bar = new Blarg(42);\x0abar.foo();\x0aprint(bar['nope']);\x0a\x0avar flup = bar.foo.bind(bar);\x0aflup();\x0a\x0a\x0a
+!18
+c113:%print:{987654,Blarg}:"foo(42)"
+c184:%print:{123456,global}:#U
+c113:%print:{987654,Blarg}:"foo(42)"
