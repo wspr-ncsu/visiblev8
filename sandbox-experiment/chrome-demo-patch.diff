@@ -1,0 +1,152 @@
+diff --git a/content/browser/sandbox_ipc_linux.cc b/content/browser/sandbox_ipc_linux.cc
+index b0cade3d50662..b3519f0a3fb03 100644
+--- a/content/browser/sandbox_ipc_linux.cc
++++ b/content/browser/sandbox_ipc_linux.cc
+@@ -12,6 +12,14 @@
+ #include <sys/socket.h>
+ #include <sys/stat.h>
+ 
++// VV8 sandy experiment start
++// --------------------------
++#include <unistd.h>
++#include <netdb.h>
++#include <sys/types.h>
++// ------------------------
++// VV8 sandy experiment end
++
+ #include "base/command_line.h"
+ #include "base/files/scoped_file.h"
+ #include "base/linux_util.h"
+@@ -78,6 +86,64 @@ void SandboxIPCHandler::Run() {
+   VLOG(1) << "SandboxIPCHandler stopping.";
+ }
+ 
++
++// VV8 sandy experiment start
++// --------------------------
++static const char *ENV_VV8_LOG_HOST = "VV8_LOG_HOST";
++static const char *DEFAULT_VV8_LOG_HOST = "localhost";
++static const char *ENV_VV8_LOG_PORT = "VV8_LOG_PORT";
++static const char *DEFAULT_VV8_LOG_PORT = "5580";
++
++static int
++vv8_connect_to_logging_server_direct() {
++  int ret = -1;
++  const char *log_host = NULL;
++  const char *log_port = NULL;
++  struct addrinfo hints;
++  struct addrinfo *result = NULL, *rp;
++  int sfd, s;
++
++  memset(&hints, 0, sizeof(hints));
++  hints.ai_family = AF_UNSPEC;
++  hints.ai_socktype = SOCK_STREAM;
++  hints.ai_flags = 0;
++  hints.ai_protocol = 0;
++
++  if ((log_host = getenv(ENV_VV8_LOG_HOST)) == NULL) {
++    log_host = DEFAULT_VV8_LOG_HOST;	
++  }
++  if ((log_port = getenv(ENV_VV8_LOG_PORT)) == NULL) {
++    log_port = DEFAULT_VV8_LOG_PORT;
++  }
++  printf("debug: connecting to %s:%s\n", log_host, log_port);
++
++  s = getaddrinfo(log_host, log_port, &hints, &result);
++  if (s != 0) {
++    fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
++    goto cleanup;
++  }
++  for (rp = result; rp != NULL; rp = rp->ai_next) {
++    sfd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
++    if (sfd < 0) continue;
++    if (connect(sfd, rp->ai_addr, rp->ai_addrlen) != -1) break;
++    close(sfd);
++  }
++  if (rp == NULL) {
++    fprintf(stderr, "could not connect to %s:%s\n", log_host, log_port);
++    goto cleanup;
++  }
++
++  ret = sfd;
++cleanup:
++  if (result != NULL) {
++    freeaddrinfo(result);
++  }
++  return ret;
++}
++// --------------------------
++// VV8 sandy experiment start
++
++
+ void SandboxIPCHandler::HandleRequestFromChild(int fd) {
+   std::vector<base::ScopedFD> fds;
+ 
+@@ -125,6 +191,20 @@ void SandboxIPCHandler::HandleRequestFromChild(int fd) {
+     HandleMakeSharedMemorySegment(fd, iter, fds);
+     return;
+   }
++
++  // VV8 sandy experiment start
++  // --------------------------
++  if (kind ==
++      sandbox::policy::SandboxLinux::VV8_LOG_SOCKET_ACCESS) {
++    int sock = vv8_connect_to_logging_server_direct();
++    if (sock >= 0) {
++      base::Pickle reply;
++      SendRendererReply(fds, reply, sock);
++    }
++    return;
++  }
++  // ------------------------
++  // VV8 sandy experiment end
+   NOTREACHED();
+ }
+ 
+diff --git a/content/common/zygote/sandbox_support_linux.cc b/content/common/zygote/sandbox_support_linux.cc
+index 4772a34bb0ecc..066806de26c7a 100644
+--- a/content/common/zygote/sandbox_support_linux.cc
++++ b/content/common/zygote/sandbox_support_linux.cc
+@@ -35,4 +35,30 @@ int GetSandboxFD() {
+   return kSandboxIPCChannel + base::GlobalDescriptors::kBaseDescriptor;
+ }
+ 
++// VV8 sandy experiment
++__attribute__((visibility("default")))
++extern "C" int 
++vv8_connect_to_logging_server(void) {
++  base::Pickle request;
++  request.WriteInt(sandbox::policy::SandboxLinux::VV8_LOG_SOCKET_ACCESS);
++
++  uint8_t reply_buf[10];
++  int result_fd;
++
++  errno = 0;
++  ssize_t result = base::UnixDomainSocket::SendRecvMsg(
++      GetSandboxFD(), 
++      reply_buf, 
++      sizeof(reply_buf),
++      &result_fd,
++      request);
++
++  if (result == -1) {
++    perror("VV8-OOPS: result == -1");
++    return -1;
++  }
++
++  return result_fd;
++}
++
+ }  // namespace content
+diff --git a/sandbox/policy/linux/sandbox_linux.h b/sandbox/policy/linux/sandbox_linux.h
+index 4b32dc48c27cd..a1d8d6f0d517c 100644
+--- a/sandbox/policy/linux/sandbox_linux.h
++++ b/sandbox/policy/linux/sandbox_linux.h
+@@ -62,6 +62,7 @@ class SANDBOX_POLICY_EXPORT SandboxLinux {
+     DEPRECATED_METHOD_GET_STYLE_FOR_STRIKE,
+     METHOD_MAKE_SHARED_MEMORY_SEGMENT,
+     DEPRECATED_METHOD_MATCH_WITH_FALLBACK,
++    VV8_LOG_SOCKET_ACCESS,
+   };
+ 
+   // These form a bitmask which describes the conditions of the Linux sandbox.

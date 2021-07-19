@@ -1,0 +1,16 @@
+{
+  "name": "pptr-test",
+  "version": "1.0.0",
+  "description": "Testing execution-context tracking and VV8 socket logging.",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "am": "^1.1.0",
+    "puppeteer-core": "^10.1.0",
+    "xvfb": "^0.4.0"
+  }
+}

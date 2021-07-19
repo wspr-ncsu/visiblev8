@@ -1,0 +1,868 @@
+new session 95F68AAB74AFDC836D496D6F9B5EBC33 browser
+ATTACH: {
+  targetId: '37627A31E32D8D623617C8B25DB5C852',
+  type: 'page',
+  title: '',
+  url: 'about:blank',
+  attached: true,
+  canAccessOpener: false,
+  browserContextId: 'C7C8A742D13042178FA8E59D95A0A268'
+}
+new session 2C87C5BCD2670FD0015C877E495C7DCE page
+EXECON: {
+  id: 2,
+  origin: '',
+  name: '__puppeteer_utility_world__',
+  uniqueId: '-4052200819105051899.8854860473255681391',
+  auxData: {
+    isDefault: false,
+    type: 'isolated',
+    frameId: '37627A31E32D8D623617C8B25DB5C852'
+  }
+}
+FRAME: undefined {
+  id: '37627A31E32D8D623617C8B25DB5C852',
+  loaderId: '220B0BF030689E8D42AFA0FD8F50CFA8',
+  url: 'https://www.cnn.com/',
+  domainAndRegistry: 'cnn.com',
+  securityOrigin: 'https://www.cnn.com',
+  mimeType: 'text/html',
+  adFrameType: 'none',
+  secureContextType: 'Secure',
+  crossOriginIsolatedContextType: 'NotIsolated',
+  gatedAPIFeatures: [ 'SharedArrayBuffersTransferAllowed' ]
+}
+EXECON: {
+  id: 3,
+  origin: 'https://www.cnn.com',
+  name: '',
+  uniqueId: '-4786666836018802661.4015943705910040487',
+  auxData: {
+    isDefault: true,
+    type: 'default',
+    frameId: '37627A31E32D8D623617C8B25DB5C852'
+  }
+}
+EXECON: {
+  id: 4,
+  origin: '://',
+  name: '__puppeteer_utility_world__',
+  uniqueId: '224783569588955413.4039556528390976607',
+  auxData: {
+    isDefault: false,
+    type: 'isolated',
+    frameId: '37627A31E32D8D623617C8B25DB5C852'
+  }
+}
+FRAME: undefined {
+  id: '861CB8D54846F4A6DD6A5692C82BEDF4',
+  parentId: '37627A31E32D8D623617C8B25DB5C852',
+  loaderId: '01512A2E667BF19818F259D3433D1F32',
+  name: '__uspapiLocator',
+  url: 'about:blank',
+  domainAndRegistry: '',
+  securityOrigin: '://',
+  mimeType: 'text/html',
+  adFrameType: 'none',
+  secureContextType: 'Secure',
+  crossOriginIsolatedContextType: 'NotIsolated',
+  gatedAPIFeatures: [ 'SharedArrayBuffersTransferAllowed' ]
+}
+EXECON: {
+  id: 5,
+  origin: 'https://www.cnn.com',
+  name: '',
+  uniqueId: '-2865642042828083632.-5587991486278855504',
+  auxData: {
+    isDefault: true,
+    type: 'default',
+    frameId: '861CB8D54846F4A6DD6A5692C82BEDF4'
+  }
+}
+EXECON: {
+  id: 6,
+  origin: '',
+  name: '__puppeteer_utility_world__',
+  uniqueId: '5322264683243836080.-7776333314574013645',
+  auxData: {
+    isDefault: false,
+    type: 'isolated',
+    frameId: '861CB8D54846F4A6DD6A5692C82BEDF4'
+  }
+}
+FRAME: undefined {
+  id: '3603441A17E3AFF84BAFE79EE105BFC0',
+  parentId: '37627A31E32D8D623617C8B25DB5C852',
+  loaderId: '5E318A46C6D6C6D09E0242BE95F5C860',
+  name: '_usrConWM',
+  url: 'about:blank',
+  domainAndRegistry: '',
+  securityOrigin: '://',
+  mimeType: 'text/html',
+  adFrameType: 'none',
+  secureContextType: 'Secure',
+  crossOriginIsolatedContextType: 'NotIsolated',
+  gatedAPIFeatures: [ 'SharedArrayBuffersTransferAllowed' ]
+}
+EXECON: {
+  id: 7,
+  origin: 'https://www.cnn.com',
+  name: '',
+  uniqueId: '-1238423193011180804.-649679618711397637',
+  auxData: {
+    isDefault: true,
+    type: 'default',
+    frameId: '3603441A17E3AFF84BAFE79EE105BFC0'
+  }
+}
+EXECON: {
+  id: 8,
+  origin: '',
+  name: '__puppeteer_utility_world__',
+  uniqueId: '-3467351270627449450.-3081008661843333691',
+  auxData: {
+    isDefault: false,
+    type: 'isolated',
+    frameId: '3603441A17E3AFF84BAFE79EE105BFC0'
+  }
+}
+ATTACH: {
+  targetId: '9959EBFADD6C093757A558ED3BB8EF04',
+  type: 'iframe',
+  title: '',
+  url: '',
+  attached: true,
+  canAccessOpener: false,
+  browserContextId: 'C7C8A742D13042178FA8E59D95A0A268'
+}
+new session EF6CAD2F34A27F8DC10FB0C73D056351 iframe
+FRAME: undefined {
+  id: '9959EBFADD6C093757A558ED3BB8EF04',
+  parentId: '37627A31E32D8D623617C8B25DB5C852',
+  loaderId: '073A0361BC27F41142A1C96D1808392D',
+  name: '',
+  url: 'https://a125375509.cdn.optimizely.com/client_storage/a125375509.html',
+  domainAndRegistry: 'optimizely.com',
+  securityOrigin: 'https://a125375509.cdn.optimizely.com',
+  mimeType: 'text/html',
+  adFrameType: 'none',
+  secureContextType: 'Secure',
+  crossOriginIsolatedContextType: 'NotIsolatedFeatureDisabled',
+  gatedAPIFeatures: [ 'SharedArrayBuffersTransferAllowed' ]
+}
+EXECON: {
+  id: 1,
+  origin: 'https://a125375509.cdn.optimizely.com',
+  name: '',
+  uniqueId: '133150247765761343.-2024249936923303124',
+  auxData: {
+    isDefault: true,
+    type: 'default',
+    frameId: '9959EBFADD6C093757A558ED3BB8EF04'
+  }
+}
+FRAME: undefined {
+  id: '0BC851D61B3F382346CB2AC97A386941',
+  parentId: '37627A31E32D8D623617C8B25DB5C852',
+  loaderId: 'A122658416A7B2525F9837799C39AA00',
+  name: 'lightningjs-frame-usabilla_live',
+  url: 'about:blank',
+  domainAndRegistry: '',
+  securityOrigin: '://',
+  mimeType: 'text/html',
+  adFrameType: 'none',
+  secureContextType: 'Secure',
+  crossOriginIsolatedContextType: 'NotIsolated',
+  gatedAPIFeatures: [ 'SharedArrayBuffersTransferAllowed' ]
+}
+EXECON: {
+  id: 9,
+  origin: 'https://www.cnn.com',
+  name: '',
+  uniqueId: '2246369337545034234.-8183876352449784252',
+  auxData: {
+    isDefault: true,
+    type: 'default',
+    frameId: '0BC851D61B3F382346CB2AC97A386941'
+  }
+}
+EXECON: {
+  id: 10,
+  origin: '',
+  name: '__puppeteer_utility_world__',
+  uniqueId: '-4356731344707959601.851875182174343357',
+  auxData: {
+    isDefault: false,
+    type: 'isolated',
+    frameId: '0BC851D61B3F382346CB2AC97A386941'
+  }
+}
+ATTACH: {
+  targetId: 'B89DA825F2223AC179943CF0270FE271',
+  type: 'iframe',
+  title: '',
+  url: '',
+  attached: true,
+  canAccessOpener: false,
+  browserContextId: 'C7C8A742D13042178FA8E59D95A0A268'
+}
+new session 2D278986068260506106CF960D152914 iframe
+FRAME: undefined {
+  id: 'B89DA825F2223AC179943CF0270FE271',
+  parentId: '37627A31E32D8D623617C8B25DB5C852',
+  loaderId: '2B4469B0F19348A91F3D4E9D4E282113',
+  name: '',
+  url: 'https://i.cdn.tbs.com/assets/staticfiles/uidcheck.html?uuid_origin=https://www.cnn.com',
+  domainAndRegistry: 'tbs.com',
+  securityOrigin: 'https://i.cdn.tbs.com',
+  mimeType: 'text/html',
+  adFrameType: 'none',
+  secureContextType: 'Secure',
+  crossOriginIsolatedContextType: 'NotIsolatedFeatureDisabled',
+  gatedAPIFeatures: [ 'SharedArrayBuffersTransferAllowed' ]
+}
+EXECON: {
+  id: 1,
+  origin: 'https://i.cdn.tbs.com',
+  name: '',
+  uniqueId: '2512993640858594545.-5355375701588852754',
+  auxData: {
+    isDefault: true,
+    type: 'default',
+    frameId: 'B89DA825F2223AC179943CF0270FE271'
+  }
+}
+ATTACH: {
+  targetId: 'B5F28442C59129981787D9D0A2387615',
+  type: 'iframe',
+  title: '',
+  url: '',
+  attached: true,
+  canAccessOpener: false,
+  browserContextId: 'C7C8A742D13042178FA8E59D95A0A268'
+}
+new session 03A9F21BAF44A26000C0350BFE153291 iframe
+ATTACH: {
+  targetId: '4FE7C3A30223145119435FD62CBF2C9D',
+  type: 'iframe',
+  title: '',
+  url: '',
+  attached: true,
+  canAccessOpener: false,
+  browserContextId: 'C7C8A742D13042178FA8E59D95A0A268'
+}
+new session CD904D49425B8EDECEE8D25DFD9A616F iframe
+FRAME: undefined {
+  id: 'B5F28442C59129981787D9D0A2387615',
+  parentId: '37627A31E32D8D623617C8B25DB5C852',
+  loaderId: '9BAD93F2ECCE053BF1BD77985E907184',
+  name: '',
+  url: 'https://www.adultswim.com/uidc.html?uuid_origin=https://www.cnn.com',
+  domainAndRegistry: 'adultswim.com',
+  securityOrigin: 'https://www.adultswim.com',
+  mimeType: 'text/html',
+  adFrameType: 'none',
+  secureContextType: 'Secure',
+  crossOriginIsolatedContextType: 'NotIsolatedFeatureDisabled',
+  gatedAPIFeatures: [ 'SharedArrayBuffersTransferAllowed' ]
+}
+EXECON: {
+  id: 1,
+  origin: 'https://www.adultswim.com',
+  name: '',
+  uniqueId: '5309223576262156074.-2628808928068168517',
+  auxData: {
+    isDefault: true,
+    type: 'default',
+    frameId: 'B5F28442C59129981787D9D0A2387615'
+  }
+}
+ATTACH: {
+  targetId: '6BE041000636ACEB36C3D040D005826A',
+  type: 'iframe',
+  title: '',
+  url: '',
+  attached: true,
+  canAccessOpener: false,
+  browserContextId: 'C7C8A742D13042178FA8E59D95A0A268'
+}
+new session 0EB03906169859C223129407D8EF7CEE iframe
+FRAME: undefined {
+  id: '4FE7C3A30223145119435FD62CBF2C9D',
+  parentId: '37627A31E32D8D623617C8B25DB5C852',
+  loaderId: '65E0F3626F7B8ADB2EF1C5894BB8E9E1',
+  name: '',
+  url: 'https://i.cdn.tntdrama.com/assets/staticfiles/uidcheck.html?uuid_origin=https://www.cnn.com',
+  domainAndRegistry: 'tntdrama.com',
+  securityOrigin: 'https://i.cdn.tntdrama.com',
+  mimeType: 'text/html',
+  adFrameType: 'none',
+  secureContextType: 'Secure',
+  crossOriginIsolatedContextType: 'NotIsolatedFeatureDisabled',
+  gatedAPIFeatures: [ 'SharedArrayBuffersTransferAllowed' ]
+}
+EXECON: {
+  id: 1,
+  origin: 'https://i.cdn.tntdrama.com',
+  name: '',
+  uniqueId: '4312542497576075996.2493722392241911495',
+  auxData: {
+    isDefault: true,
+    type: 'default',
+    frameId: '4FE7C3A30223145119435FD62CBF2C9D'
+  }
+}
+EXECON: {
+  id: 11,
+  origin: 'https://www.cnn.com',
+  name: '',
+  uniqueId: '-3625472029509059114.3972453637351989863',
+  auxData: {
+    isDefault: true,
+    type: 'default',
+    frameId: 'F203D10D66A1169BCB4AA41AEA92E87D'
+  }
+}
+EXECON: {
+  id: 12,
+  origin: 'https://www.cnn.com',
+  name: '',
+  uniqueId: '1700137143405206291.1621099488015230811',
+  auxData: {
+    isDefault: true,
+    type: 'default',
+    frameId: '6BE041000636ACEB36C3D040D005826A'
+  }
+}
+EXECON: {
+  id: 13,
+  origin: 'https://www.cnn.com',
+  name: '',
+  uniqueId: '1746858672739350917.3163801692142002845',
+  auxData: {
+    isDefault: true,
+    type: 'default',
+    frameId: 'B89DA825F2223AC179943CF0270FE271'
+  }
+}
+EXECON: {
+  id: 14,
+  origin: 'https://www.cnn.com',
+  name: '',
+  uniqueId: '-8967883141332809723.1447917089304138464',
+  auxData: {
+    isDefault: true,
+    type: 'default',
+    frameId: '4FE7C3A30223145119435FD62CBF2C9D'
+  }
+}
+EXECON: {
+  id: 15,
+  origin: 'https://www.cnn.com',
+  name: '',
+  uniqueId: '-6746530946781466789.5664510666528496503',
+  auxData: {
+    isDefault: true,
+    type: 'default',
+    frameId: '10B61FDC5774219C78C6D10350C23F07'
+  }
+}
+EXECON: {
+  id: 16,
+  origin: 'https://www.cnn.com',
+  name: '',
+  uniqueId: '-4167601046018018266.4281976185829666364',
+  auxData: {
+    isDefault: true,
+    type: 'default',
+    frameId: 'B5F28442C59129981787D9D0A2387615'
+  }
+}
+FRAME: undefined {
+  id: '6BE041000636ACEB36C3D040D005826A',
+  parentId: '37627A31E32D8D623617C8B25DB5C852',
+  loaderId: '7D3D3F0ECE0A35E80163D393F59D81E0',
+  name: '',
+  url: 'https://www.att.com/scripts/goldeneye/uidcheck.html?uuid_origin=https://www.cnn.com',
+  domainAndRegistry: 'att.com',
+  securityOrigin: 'https://www.att.com',
+  mimeType: 'text/html',
+  adFrameType: 'none',
+  secureContextType: 'Secure',
+  crossOriginIsolatedContextType: 'NotIsolatedFeatureDisabled',
+  gatedAPIFeatures: [ 'SharedArrayBuffersTransferAllowed' ]
+}
+EXECON: {
+  id: 1,
+  origin: 'https://www.att.com',
+  name: '',
+  uniqueId: '860414773463260637.5093099723312240218',
+  auxData: {
+    isDefault: true,
+    type: 'default',
+    frameId: '6BE041000636ACEB36C3D040D005826A'
+  }
+}
+ATTACH: {
+  targetId: 'F203D10D66A1169BCB4AA41AEA92E87D',
+  type: 'iframe',
+  title: '',
+  url: '',
+  attached: true,
+  canAccessOpener: false,
+  browserContextId: 'C7C8A742D13042178FA8E59D95A0A268'
+}
+new session 56BBE1044CBE6E1503252B9CF1B6C050 iframe
+ATTACH: {
+  targetId: '10B61FDC5774219C78C6D10350C23F07',
+  type: 'iframe',
+  title: '',
+  url: '',
+  attached: true,
+  canAccessOpener: false,
+  browserContextId: 'C7C8A742D13042178FA8E59D95A0A268'
+}
+new session 5842F2D59F1B637F01B8C014AF107BDF iframe
+EXECON: {
+  id: 2,
+  origin: 'https://i.cdn.tntdrama.com',
+  name: '',
+  uniqueId: '-2515752569555829478.-8732716493635026115',
+  auxData: {
+    isDefault: true,
+    type: 'default',
+    frameId: '3A237AF3AA17333E1F806BCC91221DE2'
+  }
+}
+FRAME: undefined {
+  id: 'F203D10D66A1169BCB4AA41AEA92E87D',
+  parentId: '37627A31E32D8D623617C8B25DB5C852',
+  loaderId: '04E7598240E1305DAC25BF0A0243B3B5',
+  name: '',
+  url: 'https://bleacherreport.com/uidcheck?uuid_origin=https://www.cnn.com',
+  domainAndRegistry: 'bleacherreport.com',
+  securityOrigin: 'https://bleacherreport.com',
+  mimeType: 'text/html',
+  adFrameType: 'none',
+  secureContextType: 'Secure',
+  crossOriginIsolatedContextType: 'NotIsolatedFeatureDisabled',
+  gatedAPIFeatures: [ 'SharedArrayBuffersTransferAllowed' ]
+}
+EXECON: {
+  id: 1,
+  origin: 'https://bleacherreport.com',
+  name: '',
+  uniqueId: '7862803547610729774.6735963202082433652',
+  auxData: {
+    isDefault: true,
+    type: 'default',
+    frameId: 'F203D10D66A1169BCB4AA41AEA92E87D'
+  }
+}
+FRAME: undefined {
+  id: '10B61FDC5774219C78C6D10350C23F07',
+  parentId: '37627A31E32D8D623617C8B25DB5C852',
+  loaderId: '1EB65256902CFC1CF1522BA25D3AE235',
+  name: '',
+  url: 'https://i.cdn.trutv.com/assets/staticfiles/uidcheck.html?uuid_origin=https://www.cnn.com',
+  domainAndRegistry: 'trutv.com',
+  securityOrigin: 'https://i.cdn.trutv.com',
+  mimeType: 'text/html',
+  adFrameType: 'none',
+  secureContextType: 'Secure',
+  crossOriginIsolatedContextType: 'NotIsolatedFeatureDisabled',
+  gatedAPIFeatures: [ 'SharedArrayBuffersTransferAllowed' ]
+}
+EXECON: {
+  id: 1,
+  origin: 'https://i.cdn.trutv.com',
+  name: '',
+  uniqueId: '4976079638302073402.6943749392720694529',
+  auxData: {
+    isDefault: true,
+    type: 'default',
+    frameId: '10B61FDC5774219C78C6D10350C23F07'
+  }
+}
+ATTACH: {
+  targetId: '4499FC244114315C301A599A5F8EE5CD',
+  type: 'iframe',
+  title: '',
+  url: '',
+  attached: true,
+  canAccessOpener: false,
+  browserContextId: 'C7C8A742D13042178FA8E59D95A0A268'
+}
+new session 9F7387C1EF05581076417458F4B77DB8 iframe
+FRAME: undefined {
+  id: '4499FC244114315C301A599A5F8EE5CD',
+  parentId: '37627A31E32D8D623617C8B25DB5C852',
+  loaderId: 'EB4AAF755A11CE56E8AA6DE035B1981E',
+  name: '',
+  url: 'https://cdn.krxd.net/partnerjs/xdi/proxy.3d2100fd7107262ecb55ce6847f01fa5.html',
+  urlFragment: '#!kxcid=ITb_4eqO&kxt=https%3A%2F%2Fwww.cnn.com&kxcl=cdn&kxp=',
+  domainAndRegistry: 'krxd.net',
+  securityOrigin: 'https://cdn.krxd.net',
+  mimeType: 'text/html',
+  adFrameType: 'none',
+  secureContextType: 'Secure',
+  crossOriginIsolatedContextType: 'NotIsolatedFeatureDisabled',
+  gatedAPIFeatures: [ 'SharedArrayBuffersTransferAllowed' ]
+}
+EXECON: {
+  id: 1,
+  origin: 'https://cdn.krxd.net',
+  name: '',
+  uniqueId: '-7213101393906737036.-681865528363721389',
+  auxData: {
+    isDefault: true,
+    type: 'default',
+    frameId: '4499FC244114315C301A599A5F8EE5CD'
+  }
+}
+ATTACH: {
+  targetId: 'CB9E3DBDCB81CC0F7747C45F1A7644C4',
+  type: 'iframe',
+  title: '',
+  url: '',
+  attached: true,
+  canAccessOpener: false,
+  browserContextId: 'C7C8A742D13042178FA8E59D95A0A268'
+}
+new session E8353177A529D1BE309158314532E78E iframe
+FRAME: undefined {
+  id: 'CB9E3DBDCB81CC0F7747C45F1A7644C4',
+  parentId: '37627A31E32D8D623617C8B25DB5C852',
+  loaderId: 'DFE17FF678FD12E269AD5DF14847095F',
+  name: '',
+  url: 'https://widgets.outbrain.com/nanoWidget/externals/cookie/put.html',
+  domainAndRegistry: 'outbrain.com',
+  securityOrigin: 'https://widgets.outbrain.com',
+  mimeType: 'text/html',
+  adFrameType: 'none',
+  secureContextType: 'Secure',
+  crossOriginIsolatedContextType: 'NotIsolatedFeatureDisabled',
+  gatedAPIFeatures: [ 'SharedArrayBuffersTransferAllowed' ]
+}
+EXECON: {
+  id: 1,
+  origin: 'https://widgets.outbrain.com',
+  name: '',
+  uniqueId: '-2917847402519537663.-8473250035585228692',
+  auxData: {
+    isDefault: true,
+    type: 'default',
+    frameId: 'CB9E3DBDCB81CC0F7747C45F1A7644C4'
+  }
+}
+FRAME: undefined {
+  id: 'CB9E3DBDCB81CC0F7747C45F1A7644C4',
+  parentId: '37627A31E32D8D623617C8B25DB5C852',
+  loaderId: '88772E10E0A09E6E3E349F21E1F16777',
+  name: '',
+  url: 'https://widgets.outbrain.com/nanoWidget/externals/cookie/test.html',
+  domainAndRegistry: 'outbrain.com',
+  securityOrigin: 'https://widgets.outbrain.com',
+  mimeType: 'text/html',
+  adFrameType: 'none',
+  secureContextType: 'Secure',
+  crossOriginIsolatedContextType: 'NotIsolatedFeatureDisabled',
+  gatedAPIFeatures: [ 'SharedArrayBuffersTransferAllowed' ]
+}
+EXECON: {
+  id: 2,
+  origin: 'https://widgets.outbrain.com',
+  name: '',
+  uniqueId: '-4979618621873016006.782280045682525084',
+  auxData: {
+    isDefault: true,
+    type: 'default',
+    frameId: 'CB9E3DBDCB81CC0F7747C45F1A7644C4'
+  }
+}
+ATTACH: {
+  targetId: 'EFADA0608D8DA741DF4C02AE09F38F7B',
+  type: 'iframe',
+  title: '',
+  url: '',
+  attached: true,
+  canAccessOpener: false,
+  browserContextId: 'C7C8A742D13042178FA8E59D95A0A268'
+}
+new session A73FE8CCCABA617CCA51E773494CBD14 iframe
+FRAME: undefined {
+  id: 'EFADA0608D8DA741DF4C02AE09F38F7B',
+  parentId: '37627A31E32D8D623617C8B25DB5C852',
+  loaderId: 'FEBB5269D5747824C42F2AF17337F46B',
+  name: '',
+  url: 'https://acdn.adnxs.com/dmp/firstpartyuid/uidcheck.html?uuid_origin=https://www.cnn.com',
+  domainAndRegistry: 'adnxs.com',
+  securityOrigin: 'https://acdn.adnxs.com',
+  mimeType: 'text/html',
+  adFrameType: 'none',
+  secureContextType: 'Secure',
+  crossOriginIsolatedContextType: 'NotIsolatedFeatureDisabled',
+  gatedAPIFeatures: [ 'SharedArrayBuffersTransferAllowed' ]
+}
+EXECON: {
+  id: 1,
+  origin: 'https://acdn.adnxs.com',
+  name: '',
+  uniqueId: '1990661025067826228.-6123637084421174950',
+  auxData: {
+    isDefault: true,
+    type: 'default',
+    frameId: 'EFADA0608D8DA741DF4C02AE09F38F7B'
+  }
+}
+ATTACH: {
+  targetId: '0E23938845AB9D266BCA932D45FE437B',
+  type: 'iframe',
+  title: '',
+  url: '',
+  attached: true,
+  canAccessOpener: false,
+  browserContextId: 'C7C8A742D13042178FA8E59D95A0A268'
+}
+new session 55D8CD515C92705D279CBAADE4B37E2D iframe
+FRAME: undefined {
+  id: '0E23938845AB9D266BCA932D45FE437B',
+  parentId: '37627A31E32D8D623617C8B25DB5C852',
+  loaderId: '93993051137B5456118596C79CC78ABA',
+  name: '',
+  url: 'https://assets.bounceexchange.com/assets/bounce/local_storage_frame16.min.html',
+  urlFragment: '#340',
+  domainAndRegistry: 'bounceexchange.com',
+  securityOrigin: 'https://assets.bounceexchange.com',
+  mimeType: 'text/html',
+  adFrameType: 'none',
+  secureContextType: 'Secure',
+  crossOriginIsolatedContextType: 'NotIsolatedFeatureDisabled',
+  gatedAPIFeatures: [ 'SharedArrayBuffersTransferAllowed' ]
+}
+EXECON: {
+  id: 1,
+  origin: 'https://assets.bounceexchange.com',
+  name: '',
+  uniqueId: '-8088699810564391856.8191582215232820095',
+  auxData: {
+    isDefault: true,
+    type: 'default',
+    frameId: '0E23938845AB9D266BCA932D45FE437B'
+  }
+}
+ATTACH: {
+  targetId: 'AE1FC2DF159911D3DEC81F2FEFED67CB',
+  type: 'iframe',
+  title: '',
+  url: '',
+  attached: true,
+  canAccessOpener: false,
+  browserContextId: 'C7C8A742D13042178FA8E59D95A0A268'
+}
+new session 49979F357638C5A313872D4E6CC46684 iframe
+FRAME: undefined {
+  id: 'AE1FC2DF159911D3DEC81F2FEFED67CB',
+  parentId: '37627A31E32D8D623617C8B25DB5C852',
+  loaderId: 'A36836DA855536711DF1BF03D325CC46',
+  name: '',
+  url: 'https://2475fa534569a0ead79b1dd3d0ad7c24.safeframe.googlesyndication.com/safeframe/1-0-38/html/container.html',
+  domainAndRegistry: 'googlesyndication.com',
+  securityOrigin: 'https://2475fa534569a0ead79b1dd3d0ad7c24.safeframe.googlesyndication.com',
+  mimeType: 'text/html',
+  adFrameType: 'none',
+  secureContextType: 'Secure',
+  crossOriginIsolatedContextType: 'NotIsolatedFeatureDisabled',
+  gatedAPIFeatures: [ 'SharedArrayBuffersTransferAllowed' ]
+}
+EXECON: {
+  id: 1,
+  origin: 'https://2475fa534569a0ead79b1dd3d0ad7c24.safeframe.googlesyndication.com',
+  name: '',
+  uniqueId: '-8084086550366398997.-72000238138129044',
+  auxData: {
+    isDefault: true,
+    type: 'default',
+    frameId: 'AE1FC2DF159911D3DEC81F2FEFED67CB'
+  }
+}
+FRAME: undefined {
+  id: '0E35B7E371D721A20937393AFACA4964',
+  parentId: '37627A31E32D8D623617C8B25DB5C852',
+  loaderId: '7400DB7D5337D8E7A498844609F4D842',
+  name: '',
+  url: 'about:blank',
+  domainAndRegistry: '',
+  securityOrigin: '://',
+  mimeType: 'text/html',
+  adFrameType: 'none',
+  secureContextType: 'Secure',
+  crossOriginIsolatedContextType: 'NotIsolated',
+  gatedAPIFeatures: [ 'SharedArrayBuffersTransferAllowed' ]
+}
+EXECON: {
+  id: 17,
+  origin: 'https://www.cnn.com',
+  name: '',
+  uniqueId: '1046220837048977051.855080597108642622',
+  auxData: {
+    isDefault: true,
+    type: 'default',
+    frameId: '0E35B7E371D721A20937393AFACA4964'
+  }
+}
+EXECON: {
+  id: 18,
+  origin: '',
+  name: '__puppeteer_utility_world__',
+  uniqueId: '7674391841890599828.-401648303463828302',
+  auxData: {
+    isDefault: false,
+    type: 'isolated',
+    frameId: '0E35B7E371D721A20937393AFACA4964'
+  }
+}
+FRAME: undefined {
+  id: '558D9E77B156D821EBD6EA16E7B5E996',
+  parentId: '37627A31E32D8D623617C8B25DB5C852',
+  loaderId: 'F68A42A1C5E2F90DCACEC3E4BD28B144',
+  name: '',
+  url: 'about:blank',
+  domainAndRegistry: '',
+  securityOrigin: '://',
+  mimeType: 'text/html',
+  adFrameType: 'none',
+  secureContextType: 'Secure',
+  crossOriginIsolatedContextType: 'NotIsolated',
+  gatedAPIFeatures: [ 'SharedArrayBuffersTransferAllowed' ]
+}
+EXECON: {
+  id: 19,
+  origin: 'https://www.cnn.com',
+  name: '',
+  uniqueId: '8770137981501095960.-9134253791435833261',
+  auxData: {
+    isDefault: true,
+    type: 'default',
+    frameId: '558D9E77B156D821EBD6EA16E7B5E996'
+  }
+}
+EXECON: {
+  id: 20,
+  origin: '',
+  name: '__puppeteer_utility_world__',
+  uniqueId: '-7096650385616844563.-1376313207298427639',
+  auxData: {
+    isDefault: false,
+    type: 'isolated',
+    frameId: '558D9E77B156D821EBD6EA16E7B5E996'
+  }
+}
+ATTACH: {
+  targetId: '240DAEA7933B39B26DB7BDA6F7AA73BD',
+  type: 'iframe',
+  title: '',
+  url: '',
+  attached: true,
+  canAccessOpener: false,
+  browserContextId: 'C7C8A742D13042178FA8E59D95A0A268'
+}
+new session 903081ED6FE38C5ADF066960AC07770D iframe
+FRAME: undefined {
+  id: '240DAEA7933B39B26DB7BDA6F7AA73BD',
+  parentId: '37627A31E32D8D623617C8B25DB5C852',
+  loaderId: '9079BEB3D7CA7F65F0B1B633FAB6AFF5',
+  name: '',
+  url: 'https://lightning.warnermediacdn.com/cdp/psmtk/getcdpid.html',
+  domainAndRegistry: 'warnermediacdn.com',
+  securityOrigin: 'https://lightning.warnermediacdn.com',
+  mimeType: 'text/html',
+  adFrameType: 'none',
+  secureContextType: 'Secure',
+  crossOriginIsolatedContextType: 'NotIsolatedFeatureDisabled',
+  gatedAPIFeatures: [ 'SharedArrayBuffersTransferAllowed' ]
+}
+EXECON: {
+  id: 1,
+  origin: 'https://lightning.warnermediacdn.com',
+  name: '',
+  uniqueId: '-6854459992944569835.-2433564672629423246',
+  auxData: {
+    isDefault: true,
+    type: 'default',
+    frameId: '240DAEA7933B39B26DB7BDA6F7AA73BD'
+  }
+}
+ATTACH: {
+  targetId: '212737606259C13C56411881C9CD0E5A',
+  type: 'iframe',
+  title: '',
+  url: '',
+  attached: true,
+  canAccessOpener: false,
+  browserContextId: 'C7C8A742D13042178FA8E59D95A0A268'
+}
+new session 130442F0036FE6188717741AB8BF92D3 iframe
+FRAME: undefined {
+  id: '212737606259C13C56411881C9CD0E5A',
+  parentId: '37627A31E32D8D623617C8B25DB5C852',
+  loaderId: 'D5ED2F22B137FE086C6050C0740CD025',
+  name: '',
+  url: 'https://widgets.outbrain.com/nanoWidget/externals/obUserFrame/test.html?lsd=71df6e0d-ed73-4737-b2de-cebc5d8f6aa3',
+  domainAndRegistry: 'outbrain.com',
+  securityOrigin: 'https://widgets.outbrain.com',
+  mimeType: 'text/html',
+  adFrameType: 'none',
+  secureContextType: 'Secure',
+  crossOriginIsolatedContextType: 'NotIsolatedFeatureDisabled',
+  gatedAPIFeatures: [ 'SharedArrayBuffersTransferAllowed' ]
+}
+EXECON: {
+  id: 1,
+  origin: 'https://widgets.outbrain.com',
+  name: '',
+  uniqueId: '-7110884483114739383.-1717430843419254109',
+  auxData: {
+    isDefault: true,
+    type: 'default',
+    frameId: '212737606259C13C56411881C9CD0E5A'
+  }
+}
+ATTACH: {
+  targetId: 'B3EC9262A74D1FA27062B47E546CD04B',
+  type: 'iframe',
+  title: '',
+  url: '',
+  attached: true,
+  canAccessOpener: false,
+  browserContextId: 'C7C8A742D13042178FA8E59D95A0A268'
+}
+new session 13A2237119429FA1E13167146632A7CC iframe
+FRAME: undefined {
+  id: 'B3EC9262A74D1FA27062B47E546CD04B',
+  parentId: '37627A31E32D8D623617C8B25DB5C852',
+  loaderId: 'F768D10D835CF71FA4AC489E6CE254E9',
+  name: '',
+  url: 'https://widgets.outbrain.com/widgetOBUserSync/obUserSync.html',
+  urlFragment: '#pid=185&dmpenabled=true&filterDMP=OEN&csenabled=true&d=ur_CjPkJ4EkdUAQXlADxD3NWwMszihlF4Rhcy-WPUOj1v0YtIxOWkuJ4o_QZRYT1&gdpr=0&cmpNeeded=false&gdprVer=null&ccpa=1YNN&country=US',
+  domainAndRegistry: 'outbrain.com',
+  securityOrigin: 'https://widgets.outbrain.com',
+  mimeType: 'text/html',
+  adFrameType: 'none',
+  secureContextType: 'Secure',
+  crossOriginIsolatedContextType: 'NotIsolatedFeatureDisabled',
+  gatedAPIFeatures: [ 'SharedArrayBuffersTransferAllowed' ]
+}
+EXECON: {
+  id: 2,
+  origin: 'https://widgets.outbrain.com',
+  name: '',
+  uniqueId: '-7066431265649948053.-1420328639296765702',
+  auxData: {
+    isDefault: true,
+    type: 'default',
+    frameId: 'B3EC9262A74D1FA27062B47E546CD04B'
+  }
+}
+LOADED!
+all done
