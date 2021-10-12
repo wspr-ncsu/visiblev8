@@ -1,0 +1,1182 @@
+diff --git a/BUILD.gn b/BUILD.gn
+index 1b5355759d..e5b64d40c8 100644
+--- a/BUILD.gn
++++ b/BUILD.gn
+@@ -241,12 +241,13 @@ declare_args() {
+   # specific hook).
+   v8_check_header_includes = false
+ 
++  
+   # Enable sharing read-only space across isolates.
+   # Sets -DV8_SHARED_RO_HEAP.
+   v8_enable_shared_ro_heap = ""
+ 
+-  # Enable lazy source positions by default.
+-  v8_enable_lazy_source_positions = true
++  # Enable lazy source positions by default. [disabling for VisibleV8]
++  v8_enable_lazy_source_positions = false
+ 
+   # Enable third party HEAP library
+   v8_enable_third_party_heap = false
+@@ -342,6 +343,9 @@ declare_args() {
+ 
+   # Enable global allocation site tracking.
+   v8_allocation_site_tracking = true
++
++  # VisibleV8: sets VV8_TRACE_PROPERTIES
++  vv8_trace_properties = true
+ }
+ 
+ # Derived defaults.
+@@ -935,6 +939,10 @@ config("features") {
+   if (v8_advanced_bigint_algorithms) {
+     defines += [ "V8_ADVANCED_BIGINT_ALGORITHMS" ]
+   }
++  # VisibleV8: create define
++  if (vv8_trace_properties) {
++    defines += [ "VV8_TRACE_PROPERTIES" ]
++  }
+ }
+ 
+ config("toolchain") {
+diff --git a/src/builtins/builtins-api.cc b/src/builtins/builtins-api.cc
+index 8acf5f8220..289898a316 100644
+--- a/src/builtins/builtins-api.cc
++++ b/src/builtins/builtins-api.cc
+@@ -16,6 +16,10 @@
+ namespace v8 {
+ namespace internal {
+ 
++//VisibleV8
++extern void visv8_log_api_call(Isolate *, bool, HeapObject, Object, BuiltinArguments &);
++
++
+ namespace {
+ 
+ // Returns the holder JSObject if the function can legally be called with this
+@@ -54,6 +58,11 @@ V8_WARN_UNUSED_RESULT MaybeHandle<Object> HandleApiCallHelper(
+     Handle<Object> receiver, BuiltinArguments args) {
+   Handle<JSReceiver> js_receiver;
+   JSReceiver raw_holder;
++
++  // VisibleV8
++  v8::internal::visv8_log_api_call(isolate, is_construct, *function, *receiver, args);
++
++
+   if (is_construct) {
+     DCHECK(args.receiver()->IsTheHole(isolate));
+     if (fun_data->GetInstanceTemplate().IsUndefined(isolate)) {
+diff --git a/src/builtins/builtins-reflect.cc b/src/builtins/builtins-reflect.cc
+index dcbfafa0c4..077f6eb481 100644
+--- a/src/builtins/builtins-reflect.cc
++++ b/src/builtins/builtins-reflect.cc
+@@ -113,6 +113,12 @@ BUILTIN(ReflectSet) {
+   ASSIGN_RETURN_FAILURE_ON_EXCEPTION(isolate, name,
+                                      Object::ToName(isolate, key));
+ 
++#ifdef VV8_TRACE_PROPERTIES
++  // VisibleV8: log reflected property sets
++  extern void visv8_log_property_set(Isolate*, int, Object, Object, Object);
++  visv8_log_property_set(isolate, -1, *target, *key, *value);
++#endif
++
+   PropertyKey lookup_key(isolate, name);
+   LookupIterator it(isolate, receiver, lookup_key,
+                     Handle<JSReceiver>::cast(target));
+diff --git a/src/builtins/reflect.tq b/src/builtins/reflect.tq
+index 477c586403..3228e7d998 100644
+--- a/src/builtins/reflect.tq
++++ b/src/builtins/reflect.tq
+@@ -56,6 +56,10 @@ extern macro SmiConstant(constexpr OnNonExistent): Smi;
+ extern transitioning builtin GetPropertyWithReceiver(implicit context: Context)(
+     JSAny, Name, JSAny, Smi): JSAny;
+ 
++// VisibleV8: defining external trace-property-load runtime function
++extern transitioning runtime TracePropertyLoad(implicit context: Context)(Smi, JSAny, JSAny);
++
++
+ // ES6 section 26.1.6 Reflect.get
+ transitioning javascript builtin
+ ReflectGet(js-implicit context: NativeContext)(...arguments): JSAny {
+@@ -66,6 +70,11 @@ ReflectGet(js-implicit context: NativeContext)(...arguments): JSAny {
+   const name: AnyName = ToName(propertyKey);
+   const receiver: JSAny =
+       arguments.length > 2 ? arguments[2] : objectJSReceiver;
++
++
++    // VisibleV8: call-out to property-load tracer runtime function
++    TracePropertyLoad(-1, object, propertyKey);
++
+   return GetPropertyWithReceiver(
+       objectJSReceiver, name, receiver, SmiConstant(kReturnUndefined));
+ }
+diff --git a/src/compiler/js-call-reducer.cc b/src/compiler/js-call-reducer.cc
+index 4b1065d749..c2989536ae 100644
+--- a/src/compiler/js-call-reducer.cc
++++ b/src/compiler/js-call-reducer.cc
+@@ -3614,218 +3614,8 @@ FastApiCallFunctionVector CanOptimizeFastCall(
+ 
+ Reduction JSCallReducer::ReduceCallApiFunction(
+     Node* node, const SharedFunctionInfoRef& shared) {
+-  JSCallNode n(node);
+-  CallParameters const& p = n.Parameters();
+-  int const argc = p.arity_without_implicit_args();
+-  Node* target = n.target();
+-  Node* global_proxy =
+-      jsgraph()->Constant(native_context().global_proxy_object());
+-  Node* receiver = (p.convert_mode() == ConvertReceiverMode::kNullOrUndefined)
+-                       ? global_proxy
+-                       : n.receiver();
+-  Node* holder;
+-  Node* context = n.context();
+-  Effect effect = n.effect();
+-  Control control = n.control();
+-  FrameState frame_state = n.frame_state();
+-
+-  if (!shared.function_template_info().has_value()) {
+-    TRACE_BROKER_MISSING(
+-        broker(), "FunctionTemplateInfo for function with SFI " << shared);
+-    return NoChange();
+-  }
+-
+-  // See if we can optimize this API call to {shared}.
+-  FunctionTemplateInfoRef function_template_info(
+-      shared.function_template_info().value());
+-
+-  if (!function_template_info.has_call_code()) return NoChange();
+-
+-  if (function_template_info.accept_any_receiver() &&
+-      function_template_info.is_signature_undefined()) {
+-    // We might be able to
+-    // optimize the API call depending on the {function_template_info}.
+-    // If the API function accepts any kind of {receiver}, we only need to
+-    // ensure that the {receiver} is actually a JSReceiver at this point,
+-    // and also pass that as the {holder}. There are two independent bits
+-    // here:
+-    //
+-    //  a. When the "accept any receiver" bit is set, it means we don't
+-    //     need to perform access checks, even if the {receiver}'s map
+-    //     has the "needs access check" bit set.
+-    //  b. When the {function_template_info} has no signature, we don't
+-    //     need to do the compatible receiver check, since all receivers
+-    //     are considered compatible at that point, and the {receiver}
+-    //     will be pass as the {holder}.
+-    //
+-    receiver = holder = effect =
+-        graph()->NewNode(simplified()->ConvertReceiver(p.convert_mode()),
+-                         receiver, global_proxy, effect, control);
+-  } else {
+-    // Try to infer the {receiver} maps from the graph.
+-    MapInference inference(broker(), receiver, effect);
+-    if (inference.HaveMaps()) {
+-      ZoneVector<MapRef> const& receiver_maps = inference.GetMaps();
+-      MapRef first_receiver_map = receiver_maps[0];
+-
+-      // See if we can constant-fold the compatible receiver checks.
+-      HolderLookupResult api_holder =
+-          function_template_info.LookupHolderOfExpectedType(first_receiver_map);
+-      if (api_holder.lookup == CallOptimization::kHolderNotFound) {
+-        return inference.NoChange();
+-      }
+-
+-      // Check that all {receiver_maps} are actually JSReceiver maps and
+-      // that the {function_template_info} accepts them without access
+-      // checks (even if "access check needed" is set for {receiver}).
+-      //
+-      // Note that we don't need to know the concrete {receiver} maps here,
+-      // meaning it's fine if the {receiver_maps} are unreliable, and we also
+-      // don't need to install any stability dependencies, since the only
+-      // relevant information regarding the {receiver} is the Map::constructor
+-      // field on the root map (which is different from the JavaScript exposed
+-      // "constructor" property) and that field cannot change.
+-      //
+-      // So if we know that {receiver} had a certain constructor at some point
+-      // in the past (i.e. it had a certain map), then this constructor is going
+-      // to be the same later, since this information cannot change with map
+-      // transitions.
+-      //
+-      // The same is true for the instance type, e.g. we still know that the
+-      // instance type is JSObject even if that information is unreliable, and
+-      // the "access check needed" bit, which also cannot change later.
+-      CHECK(first_receiver_map.IsJSReceiverMap());
+-      CHECK(!first_receiver_map.is_access_check_needed() ||
+-            function_template_info.accept_any_receiver());
+-
+-      for (size_t i = 1; i < receiver_maps.size(); ++i) {
+-        MapRef receiver_map = receiver_maps[i];
+-        HolderLookupResult holder_i =
+-            function_template_info.LookupHolderOfExpectedType(receiver_map);
+-
+-        if (api_holder.lookup != holder_i.lookup) return inference.NoChange();
+-        DCHECK(holder_i.lookup == CallOptimization::kHolderFound ||
+-               holder_i.lookup == CallOptimization::kHolderIsReceiver);
+-        if (holder_i.lookup == CallOptimization::kHolderFound) {
+-          DCHECK(api_holder.holder.has_value() && holder_i.holder.has_value());
+-          if (!api_holder.holder->equals(*holder_i.holder)) {
+-            return inference.NoChange();
+-          }
+-        }
+-
+-        CHECK(receiver_map.IsJSReceiverMap());
+-        CHECK(!receiver_map.is_access_check_needed() ||
+-              function_template_info.accept_any_receiver());
+-      }
+-
+-      if (p.speculation_mode() == SpeculationMode::kDisallowSpeculation &&
+-          !inference.RelyOnMapsViaStability(dependencies())) {
+-        // We were not able to make the receiver maps reliable without map
+-        // checks but doing map checks would lead to deopt loops, so give up.
+-        return inference.NoChange();
+-      }
+-
+-      // TODO(neis): The maps were used in a way that does not actually require
+-      // map checks or stability dependencies.
+-      inference.RelyOnMapsPreferStability(dependencies(), jsgraph(), &effect,
+-                                          control, p.feedback());
+-
+-      // Determine the appropriate holder for the {lookup}.
+-      holder = api_holder.lookup == CallOptimization::kHolderFound
+-                   ? jsgraph()->Constant(*api_holder.holder)
+-                   : receiver;
+-    } else {
+-      // We don't have enough information to eliminate the access check
+-      // and/or the compatible receiver check, so use the generic builtin
+-      // that does those checks dynamically. This is still significantly
+-      // faster than the generic call sequence.
+-      Builtin builtin_name;
+-      if (function_template_info.accept_any_receiver()) {
+-        builtin_name = Builtin::kCallFunctionTemplate_CheckCompatibleReceiver;
+-      } else if (function_template_info.is_signature_undefined()) {
+-        builtin_name = Builtin::kCallFunctionTemplate_CheckAccess;
+-      } else {
+-        builtin_name =
+-            Builtin::kCallFunctionTemplate_CheckAccessAndCompatibleReceiver;
+-      }
+-
+-      // The CallFunctionTemplate builtin requires the {receiver} to be
+-      // an actual JSReceiver, so make sure we do the proper conversion
+-      // first if necessary.
+-      receiver = holder = effect =
+-          graph()->NewNode(simplified()->ConvertReceiver(p.convert_mode()),
+-                           receiver, global_proxy, effect, control);
+-
+-      Callable callable = Builtins::CallableFor(isolate(), builtin_name);
+-      auto call_descriptor = Linkage::GetStubCallDescriptor(
+-          graph()->zone(), callable.descriptor(),
+-          argc + 1 /* implicit receiver */, CallDescriptor::kNeedsFrameState);
+-      node->RemoveInput(n.FeedbackVectorIndex());
+-      node->InsertInput(graph()->zone(), 0,
+-                        jsgraph()->HeapConstant(callable.code()));
+-      node->ReplaceInput(1, jsgraph()->Constant(function_template_info));
+-      node->InsertInput(graph()->zone(), 2, jsgraph()->Constant(argc));
+-      node->ReplaceInput(3, receiver);       // Update receiver input.
+-      node->ReplaceInput(6 + argc, effect);  // Update effect input.
+-      NodeProperties::ChangeOp(node, common()->Call(call_descriptor));
+-      return Changed(node);
+-    }
+-  }
+-
+-  // TODO(turbofan): Consider introducing a JSCallApiCallback operator for
+-  // this and lower it during JSGenericLowering, and unify this with the
+-  // JSNativeContextSpecialization::InlineApiCall method a bit.
+-  if (!function_template_info.call_code().has_value()) {
+-    TRACE_BROKER_MISSING(broker(), "call code for function template info "
+-                                       << function_template_info);
+-    return NoChange();
+-  }
+-
+-  // Handles overloaded functions.
+-
+-  FastApiCallFunctionVector c_candidate_functions =
+-      CanOptimizeFastCall(graph()->zone(), function_template_info, argc);
+-  DCHECK_LE(c_candidate_functions.size(), 2);
+-
+-  if (!c_candidate_functions.empty()) {
+-    FastApiCallReducerAssembler a(this, node, function_template_info,
+-                                  c_candidate_functions, receiver, holder,
+-                                  shared, target, argc, effect);
+-    Node* fast_call_subgraph = a.ReduceFastApiCall();
+-    ReplaceWithSubgraph(&a, fast_call_subgraph);
+-
+-    return Replace(fast_call_subgraph);
+-  }
+-
+-  // Slow call
+-
+-  CallHandlerInfoRef call_handler_info = *function_template_info.call_code();
+-  Callable call_api_callback = CodeFactory::CallApiCallback(isolate());
+-  CallInterfaceDescriptor cid = call_api_callback.descriptor();
+-  auto call_descriptor =
+-      Linkage::GetStubCallDescriptor(graph()->zone(), cid, argc + 1 /*
+-     implicit receiver */, CallDescriptor::kNeedsFrameState);
+-  ApiFunction api_function(call_handler_info.callback());
+-  ExternalReference function_reference = ExternalReference::Create(
+-      &api_function, ExternalReference::DIRECT_API_CALL);
+-
+-  Node* continuation_frame_state = CreateGenericLazyDeoptContinuationFrameState(
+-      jsgraph(), shared, target, context, receiver, frame_state);
+-
+-  node->RemoveInput(n.FeedbackVectorIndex());
+-  node->InsertInput(graph()->zone(), 0,
+-                    jsgraph()->HeapConstant(call_api_callback.code()));
+-  node->ReplaceInput(1, jsgraph()->ExternalConstant(function_reference));
+-  node->InsertInput(graph()->zone(), 2, jsgraph()->Constant(argc));
+-  node->InsertInput(graph()->zone(), 3,
+-                    jsgraph()->Constant(call_handler_info.data()));
+-  node->InsertInput(graph()->zone(), 4, holder);
+-  node->ReplaceInput(5, receiver);  // Update receiver input.
+-  // 6 + argc is context input.
+-  node->ReplaceInput(6 + argc + 1, continuation_frame_state);
+-  node->ReplaceInput(6 + argc + 2, effect);
+-  NodeProperties::ChangeOp(node, common()->Call(call_descriptor));
+-  return Changed(node);
++  // VisibleV8
++  return NoChange();
+ }
+ 
+ namespace {
+diff --git a/src/init/v8.cc b/src/init/v8.cc
+index 70367d0697..59a7c5e4f3 100644
+--- a/src/init/v8.cc
++++ b/src/init/v8.cc
+@@ -187,6 +187,9 @@ void V8::InitializeOncePerProcessImpl() {
+ #endif  // V8_ENABLE_WEBASSEMBLY
+ 
+   ExternalReferenceTable::InitializeOncePerProcess();
++
++  extern void visv8_tls_init();
++  visv8_tls_init();
+ }
+ 
+ void V8::InitializeOncePerProcess() {
+diff --git a/src/interpreter/bytecode-generator.cc b/src/interpreter/bytecode-generator.cc
+index f78330bea1..e11716d8eb 100644
+--- a/src/interpreter/bytecode-generator.cc
++++ b/src/interpreter/bytecode-generator.cc
+@@ -4427,6 +4427,36 @@ void BytecodeGenerator::VisitAssignment(Assignment* expr) {
+ 
+   VisitForAccumulatorValue(expr->value());
+ 
++#ifdef VV8_TRACE_PROPERTIES
++  // VisibleV8 (trace assignments to named/keyed properties only)
++  if ((lhs_data.assign_type() == NAMED_PROPERTY) ||
++      (lhs_data.assign_type() == KEYED_PROPERTY)) {
++    // Save accumulator for later restoration
++    Register saved_acc = register_allocator()->NewRegister();
++    builder()->StoreAccumulatorInRegister(saved_acc);
++
++    // Trace object/property/new-value for this assignment
++    RegisterList trace_args = register_allocator()->NewRegisterList(4);
++    builder()
++        ->LoadLiteral(Smi::FromInt(expr->position()))
++        .StoreAccumulatorInRegister(trace_args[0])
++        .MoveRegister(lhs_data.object(), trace_args[1])
++        .MoveRegister(saved_acc, trace_args[3]);
++    if (lhs_data.assign_type() == NAMED_PROPERTY) {
++      builder()
++          ->LoadLiteral(lhs_data.name())
++          .StoreAccumulatorInRegister(trace_args[2]);
++    } else {
++      builder()->MoveRegister(lhs_data.key(), trace_args[2]);
++    }
++    builder()->CallRuntime(Runtime::kTracePropertyStore,
++                           trace_args);  // args: (call-site, this, key, value)
++
++    // Restore accumulator
++    builder()->LoadAccumulatorWithRegister(saved_acc);
++  }
++#endif
++
+   builder()->SetExpressionPosition(expr);
+   BuildAssignment(lhs_data, expr->op(), expr->lookup_hoisting_mode());
+ }
+@@ -4535,6 +4565,36 @@ void BytecodeGenerator::VisitCompoundAssignment(CompoundAssignment* expr) {
+     VisitForAccumulatorValue(expr->value());
+     builder()->BinaryOperation(binop->op(), old_value, feedback_index(slot));
+   }
++#ifdef VV8_TRACE_PROPERTIES
++  // VisibleV8 (trace assignments to named/keyed properties only)
++  if ((lhs_data.assign_type() == NAMED_PROPERTY) ||
++      (lhs_data.assign_type() == KEYED_PROPERTY)) {
++    // Save accumulator for later restoration
++    Register saved_acc = register_allocator()->NewRegister();
++    builder()->StoreAccumulatorInRegister(saved_acc);
++
++    // Trace object/property/new-value for this assignment
++    RegisterList trace_args = register_allocator()->NewRegisterList(4);
++    builder()
++        ->LoadLiteral(Smi::FromInt(expr->position()))
++        .StoreAccumulatorInRegister(trace_args[0])
++        .MoveRegister(lhs_data.object(), trace_args[1])
++        .MoveRegister(saved_acc, trace_args[3]);
++    if (lhs_data.assign_type() == NAMED_PROPERTY) {
++      builder()
++          ->LoadLiteral(lhs_data.name())
++          .StoreAccumulatorInRegister(trace_args[2]);
++    } else {
++      builder()->MoveRegister(lhs_data.key(), trace_args[2]);
++    }
++    builder()->CallRuntime(Runtime::kTracePropertyStore,
++                           trace_args);  // args: (call-site, this, key, value)
++
++    // Restore accumulator
++    builder()->LoadAccumulatorWithRegister(saved_acc);
++  }
++#endif
++
+   builder()->SetExpressionPosition(expr);
+   BuildAssignment(lhs_data, expr->op(), expr->lookup_hoisting_mode());
+   builder()->Bind(&short_circuit);
+@@ -4976,6 +5036,21 @@ void BytecodeGenerator::VisitPropertyLoad(Register obj, Property* property) {
+     case NON_PROPERTY:
+       UNREACHABLE();
+     case NAMED_PROPERTY: {
++#ifdef VV8_TRACE_PROPERTIES
++      // VisibleV8: generate code to trace named property loads
++      {
++        RegisterList trace_args = register_allocator()->NewRegisterList(3);
++        builder()
++            ->LoadLiteral(Smi::FromInt(property->position()))
++            .StoreAccumulatorInRegister(trace_args[0])
++            .MoveRegister(obj, trace_args[1])
++            .LoadLiteral(property->key()->AsLiteral()->AsRawPropertyName())
++            .StoreAccumulatorInRegister(trace_args[2])
++            .CallRuntime(Runtime::kTracePropertyLoad,
++                         trace_args);  // args: (call-site, this, key)
++      }
++#endif
++
+       builder()->SetExpressionPosition(property);
+       const AstRawString* name =
+           property->key()->AsLiteral()->AsRawPropertyName();
+@@ -4983,7 +5058,29 @@ void BytecodeGenerator::VisitPropertyLoad(Register obj, Property* property) {
+       break;
+     }
+     case KEYED_PROPERTY: {
++#ifdef VV8_TRACE_PROPERTIES
++      // RESHUFFLED for VisV8--evaluate property key value into a register, not
++      // the accumulator:
++      Register key_reg = VisitForRegisterValue(property->key());
++
++      // VisibleV8: generate code to trace keyed property loads
++      {
++        RegisterList trace_args = register_allocator()->NewRegisterList(3);
++        builder()
++            ->LoadLiteral(Smi::FromInt(property->position()))
++            .StoreAccumulatorInRegister(trace_args[0])
++            .MoveRegister(obj, trace_args[1])
++            .MoveRegister(key_reg, trace_args[2])
++            .CallRuntime(Runtime::kTracePropertyLoad,
++                         trace_args);  // args: (call-site, this, key)
++      }
++
++      // RESHUFFLED for VisV8--move the stashed key value into the accumulator
++      builder()->LoadAccumulatorWithRegister(key_reg);
++#else
+       VisitForAccumulatorValue(property->key());
++#endif
++
+       builder()->SetExpressionPosition(property);
+       builder()->LoadKeyedProperty(
+           obj, feedback_index(feedback_spec()->AddKeyedLoadICSlot()));
+@@ -5889,6 +5986,32 @@ void BytecodeGenerator::VisitCountOperation(CountOperation* expr) {
+   // Perform +1/-1 operation.
+   builder()->UnaryOperation(expr->op(), feedback_index(count_slot));
+ 
++#ifdef VV8_TRACE_PROPERTIES
++  // VisibleV8 (trace assignments to named/keyed properties only)
++  if ((assign_type == NAMED_PROPERTY) || (assign_type == KEYED_PROPERTY)) {
++    // Save accumulator for later restoration
++    Register saved_acc = register_allocator()->NewRegister();
++    builder()->StoreAccumulatorInRegister(saved_acc);
++
++    // Trace object/property/new-value for this assignment
++    RegisterList trace_args = register_allocator()->NewRegisterList(4);
++    builder()
++        ->LoadLiteral(Smi::FromInt(expr->position()))
++        .StoreAccumulatorInRegister(trace_args[0])
++        .MoveRegister(object, trace_args[1])
++        .MoveRegister(saved_acc, trace_args[3]);
++    if (assign_type == NAMED_PROPERTY) {
++      builder()->LoadLiteral(name).StoreAccumulatorInRegister(trace_args[2]);
++    } else {
++      builder()->MoveRegister(key, trace_args[2]);
++    }
++    builder()->CallRuntime(Runtime::kTracePropertyStore,
++                           trace_args);  // args: (call-site, this, key, value)
++
++    // Restore accumulator
++    builder()->LoadAccumulatorWithRegister(saved_acc);
++  }
++#endif
+   // Store the value.
+   builder()->SetExpressionPosition(expr);
+   switch (assign_type) {
+diff --git a/src/runtime/runtime-test.cc b/src/runtime/runtime-test.cc
+index 69b0f6241b..53181ce931 100644
+--- a/src/runtime/runtime-test.cc
++++ b/src/runtime/runtime-test.cc
+@@ -2,9 +2,22 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include <pthread.h>
++#include <sys/syscall.h>  // Horrible VisV8 hack--forgive me...
++#include <unistd.h>
++
++#include <algorithm>
++#include <fstream>
++#include <memory>
++#include <sstream>
++#include <string>
++#include <strstream>
++#include <vector>
++
+ #include "src/api/api-inl.h"
+ #include "src/base/numbers/double.h"
+ #include "src/base/platform/mutex.h"
++#include "src/builtins/builtins-utils.h"
+ #include "src/codegen/assembler-inl.h"
+ #include "src/codegen/compiler.h"
+ #include "src/codegen/pending-optimization-table.h"
+@@ -23,6 +36,7 @@
+ #include "src/objects/heap-object-inl.h"
+ #include "src/objects/js-array-inl.h"
+ #include "src/objects/js-function-inl.h"
++#include "src/objects/js-regexp-inl.h"  // VisibleV8: needed to stringify RE objects to logs
+ #include "src/objects/js-regexp-inl.h"
+ #include "src/objects/smi.h"
+ #include "src/regexp/regexp.h"
+@@ -1072,6 +1086,619 @@ RUNTIME_FUNCTION(Runtime_TraceExit) {
+   return obj;  // return TOS
+ }
+ 
++// BEGIN VisibleV8
++//------------------------------
++// Fastpath replacement for "PrintUC16" that doesn't rely on snprintf
++static void myPrintUC16(String str, std::ostream& out, int start = 0,
++                        int end = -1) {
++  static char digits[] = "0123456789abcdef";
++  char buff[4096];
++  char* bp = buff;
++  char* bmax = buff + sizeof(buff) - 6;  // max length char escape is 6 chars
++
++  if (end < 0) end = str.length();
++  StringCharacterStream src(str, start);
++  for (int i = start; i < end && src.HasMore(); ++i) {
++    auto c = src.GetNext();
++    if (c < ' ') {
++      // Unprintable ASCII ("\xEscaped")
++      *bp++ = '\\';
++      *bp++ = 'x';
++      *bp++ = digits[(c & 0xf0) >> 4];
++      *bp++ = digits[(c & 0x0f)];
++    } else if (c <= '~') {
++      // Printable ASCII
++      if (c == ':' || c == '\\') {  // handle escapes for our output delimiter
++        *bp++ = '\\';
++      }
++      *bp++ = (char)c;
++    } else {
++      // UC16 (\UEscaped)
++      *bp++ = '\\';
++      *bp++ = 'u';
++      *bp++ = digits[(c & 0xf000) >> 12];
++      *bp++ = digits[(c & 0x0f00) >> 8];
++      *bp++ = digits[(c & 0x00f0) >> 4];
++      *bp++ = digits[(c & 0x000f)];
++    }
++
++    // Capacity flush
++    if (bp >= bmax) {
++      out.write(buff, bp - buff);
++      bp = buff;
++    }
++  }
++
++  // Remainder flush
++  if (bp > buff) {
++    out.write(buff, bp - buff);
++  }
++}
++
++// Fastpath stringify for something simple (Smi, String, ...)
++// (extracted from various 8-cylinder printing functions around V8, all too
++// general/too slow)
++void visv8_to_string(Isolate* isolate, std::ostream& out, Object obj,
++                     bool quotes = true, int max_len = -1,
++                     bool iter_obj = false) {
++  HandleScope scope(isolate);
++
++  if (obj.IsSmi()) {
++    // Fine, print the stupid integer...
++    out << Smi::cast(obj).value();
++  } else {
++    // Determine type of HeapObject...
++    if (obj.IsString()) {
++      if (quotes) {
++        out << '"';
++      }
++      myPrintUC16(String::cast(obj), out, 0, max_len);
++      if (quotes) {
++        out << '"';
++      }
++    } else if (obj.IsNumber()) {
++      out << obj.Number();
++    } else if (obj.IsOddball()) {
++      switch (Oddball::cast(obj).kind()) {
++        case Oddball::kFalse:
++          out << "#F";
++          break;
++        case Oddball::kTrue:
++          out << "#T";
++          break;
++        case Oddball::kNull:
++          out << "#N";
++          break;
++        case Oddball::kUndefined:
++          out << "#U";
++          break;
++        default:
++          out << "#?";
++      }
++    } else if (obj.IsJSFunction()) {
++      auto info = JSFunction::cast(obj).shared();
++      if (!info.IsUserJavaScript()) {
++        out << '%';
++      }
++
++      auto name = info.Name();
++      if (name.length()) {
++        myPrintUC16(name, out, 0, max_len);
++      } else {
++        out << "<anonymous>";
++      }
++    } else if (obj.IsJSRegExp()) {
++      out << '/';
++      myPrintUC16(JSRegExp::cast(obj).Pattern(), out, 0, max_len);
++      out << '/';
++    } else if (obj.IsJSReceiver()) {
++      Handle<JSReceiver> rcvr = handle(JSReceiver::cast(obj), isolate);
++      out << '{';
++      out << rcvr->GetOrCreateIdentityHash(isolate).value();
++      if (iter_obj) {
++        // We are encountering this object for the first time, iterate it!
++        Handle<FixedArray> contents;
++        do {
++          if (!(KeyAccumulator::GetKeys(rcvr, KeyCollectionMode::kOwnOnly,
++                                        ENUMERABLE_STRINGS,
++                                        GetKeysConversion::kConvertToString))
++                   .ToHandle(&contents)) {
++            DCHECK((isolate)->has_pending_exception());
++            return;
++          }
++        } while (false);
++
++        for (int i = 0; i < contents->length(); i++) {
++          out << ',';
++          Handle<String> key(String::cast(contents->get(i)), isolate);
++          Handle<Object> property;
++          // Add the key to the trace logs
++          myPrintUC16(*key, out, 0, max_len);
++          out << "\\:";
++          do {
++            if (!(Object::GetPropertyOrElement(isolate, rcvr, key))
++                     .ToHandle(&property)) {
++              DCHECK((isolate)->has_pending_exception());
++              return;
++            }
++          } while (false);
++          // Recurse with the option to not go deeper
++          visv8_to_string(isolate, out, *property, true, -1, false);
++        }
++      } else {
++        // We are inside a nested object, do not go deeper!
++        out << ',';
++        Handle<String> ctor = JSReceiver::GetConstructorName(rcvr);
++        myPrintUC16(*ctor, out, 0, max_len);
++      }
++      out << '}';
++    } else {
++      out << '?';
++    }
++  }
++}
++
++// TLS storage slot key for per-thread output streams for our trace logging
++static pthread_key_t visv8_out_key;
++
++// Type used to aggregate all TLS data into one POD object
++struct VisV8TlsData {
++  // Since looking up window.origin can trigger recursion, we need to know when
++  // to ignore API calls
++  int rcount;
++
++  // std filestream used to log records to disk for this thread
++  std::ofstream log;
++
++  // Context (last-encountered Isolate, and last SID within that Isolate)
++  Isolate* last_isolate;
++  int last_script_id;
++  bool isolate_changed;
++
++  // Log file name generator pattern (for log rollover on large size)
++  int next_log;
++  char log_name_pattern[256];
++
++  // Small/simple "set" of seen Isolate/SID pairs (to avoid re-dumping script
++  // source/etc. within one log)
++  std::vector<std::pair<Isolate*, int> > seen_sids;
++
++  // To track @origin (SOP), we need to look up the window.origin string; keep a
++  // cached copy (and a scratch buffer)
++  std::ostrstream last_origin_url;
++  std::ostrstream origin_url_scratch;
++
++  // Dumb constructor
++  VisV8TlsData()
++      : rcount(0),
++        last_isolate(nullptr),
++        last_script_id(-1),
++        isolate_changed(true),
++        next_log(0) {
++    // HACK: only direct pthread call can recover thread "name" [can't get
++    // current Thread object from V8?]
++    char thread_name[16] = "<unknown>";
++    if (pthread_getname_np(pthread_self(), thread_name, sizeof(thread_name))) {
++      perror("pthread_getname_np");
++    }
++
++    // Use thread name et al. to construct our log name pattern
++    snprintf(log_name_pattern, sizeof log_name_pattern,
++             "vv8-%ld-%d-%d-%s.%%d.log", (long)base::OS::TimeCurrentMillis(),
++             base::OS::GetCurrentProcessId(), base::OS::GetCurrentThreadId(),
++             thread_name);
++
++    // And go ahead/open our next log file
++    open_next_log_file();
++
++    last_origin_url << std::ends;  // Initialize this to the empty string to
++                                   // avoid sadness later
++  }
++
++  void open_next_log_file() {
++    char log_name[256];
++
++    if (log.is_open()) log.close();
++    snprintf(log_name, sizeof log_name, log_name_pattern, next_log++);
++    log.open(log_name);
++
++    if (!log) {
++      perror(log_name);
++      abort();
++    }
++  }
++
++  // Destructor: close and delete file stream object, reset all key fields to
++  // null/invalid state
++  ~VisV8TlsData() {
++    log.close();
++    last_origin_url.freeze(
++        false);  // Make sure the ostrstreams can release their buffers here
++    origin_url_scratch.freeze(false);
++    reset_isolate(nullptr);
++  }
++
++  // Reset all context state for a new/different isolate
++  void reset_isolate(Isolate* isolate) {
++    last_isolate = isolate;
++    last_origin_url.clear();
++    last_script_id = -1;
++    isolate_changed = true;
++  }
++
++  // Log the current "last_isolate"
++  void log_isolate() {
++    log << '~' << (void*)last_isolate << '\n';
++    isolate_changed = false;
++  }
++
++  // Predicate: have we logged a given isolate/SID pair yet?
++  bool check_sid(Isolate* isolate, int sid) {
++    return std::binary_search(std::begin(seen_sids), std::end(seen_sids),
++                              std::make_pair(isolate, sid));
++  }
++
++  // Utility: insert an isolate/SID pair into our primitive set (no checks for
++  // duplicates)
++  void add_sid(Isolate* isolate, int sid) {
++    auto val = std::make_pair(isolate, sid);
++    seen_sids.insert(
++        std::upper_bound(std::begin(seen_sids), std::end(seen_sids), val), val);
++  }
++
++  // Utility: log a '$' record for the given script object
++  void log_script(Isolate* isolate, Script script) {
++    add_sid(isolate, script.id());
++
++    // Check for eval nesting (i.e., a parent script that may need to be dumped
++    // first)
++    if (script.has_eval_from_shared()) {
++      auto sfi = SharedFunctionInfo::cast(script.eval_from_shared());
++      if (sfi.script().IsScript()) {
++        auto parent = Script::cast(sfi.script());
++
++        // Yes, dump that parent... (if needed)
++        if (!check_sid(isolate, parent.id())) {
++          log_script(isolate, parent);
++        }
++
++        log << '$' << script.id() << ':' << parent.id();
++      } else {
++        // Well, we were eval'd, but we couldn't identify the parent script??
++        log << '$' << script.id() << ":#?";
++      }
++    } else {
++      // No parent, so print the script name
++      log << '$' << script.id() << ':';
++      visv8_to_string(isolate, log, script.name());
++    }
++
++    // Always finish with the source code (unquoted)
++    log << ':';
++    visv8_to_string(isolate, log, script.source(), false);
++    log << '\n';
++  }
++
++ private:
++  // Helper to "print" the current origin value to an ostream
++  void print_origin(Isolate* isolate, std::ostream& out) {
++    HandleScope hs(isolate);
++
++    // Try to get the global object and print its "origin" property
++    Handle<JSGlobalObject> native_global =
++        handle(isolate->native_context()->global_object(), isolate);
++    if (native_global->GetEmbedderFieldCount() >= 2) {
++      // Littered with evil hacks to work around WebKit/Blink's brokenness
++      // w.r.t. initializing its Window object
++      if (native_global->GetEmbedderField(1).IsSmi()) {
++        auto origin = JSReceiver::GetProperty(isolate, native_global, "origin");
++        Handle<Object> origin_value;
++        if (origin.ToHandle(&origin_value)) {
++          out << '@';
++          visv8_to_string(isolate, out, *origin_value);
++          out << '\n';
++          return;  // Early out
++        }
++      }
++    }
++
++    // Fallback, if anything went wrong
++    out << "@?\n";
++  }
++
++ public:
++  // Utility: log the current ".origin" property of the current global object
++  // (if any)
++  void log_origin(Isolate* isolate) {
++    // Clear out the scratch buffer & print the origin string to it
++    origin_url_scratch.freeze(false);
++    origin_url_scratch.seekp(0);
++    origin_url_scratch.clear();
++    print_origin(isolate, origin_url_scratch);
++    origin_url_scratch << std::ends;
++
++    // Now, compare with our cached copy
++    if (strcmp(origin_url_scratch.str(), last_origin_url.str()) != 0) {
++      // Change!  Replace our cached copy and log it
++      last_origin_url.freeze(false);
++      last_origin_url.seekp(0);
++      last_origin_url.clear();
++      last_origin_url << origin_url_scratch.str() << std::ends;
++      log << last_origin_url.str();
++    }
++  }
++};
++
++// Thread-exit destructor (to close any per-thread logging file opened, etc.)
++static void visv8_thread_exit_flusher(void* arg) {
++  auto data =
++      static_cast<VisV8TlsData*>(arg);  // pthread guarantees this is not NULL
++  delete data;
++  pthread_setspecific(visv8_out_key, nullptr);
++}
++
++// Initialization routine for VisV8's TLS slot (must call-once per process,
++// before any visv8 callbacks)
++void visv8_tls_init() {
++  // HACK: only direct pthread calls give us thread destructors [V8's xplatform
++  // thread stuff won't]
++  if (pthread_key_create(&visv8_out_key, visv8_thread_exit_flusher)) {
++    perror("pthread_key_create");
++  }
++}
++
++// Self-contained "clean up the current thread's TLS stuff" function for use by
++// external shutdown logic (e.g., atexit)
++void visv8_tls_fini() {
++  auto data = pthread_getspecific(visv8_out_key);
++  if (data) {
++    visv8_thread_exit_flusher(data);
++  }
++}
++
++// RAII "handle" to VV8 per-thread context; keep strictly lexically scoped!
++// (currently no actual destruction happening)
++class VisV8Context {
++  VisV8TlsData* data;
++
++ public:
++  // There is exactly ONE way to properly construct one of these...
++  VisV8Context() = delete;
++  VisV8Context(const VisV8Context&) = delete;
++
++  // ...and THIS is it
++  explicit VisV8Context(Isolate* current_isolate) {
++    // Get the TLS data for this thread
++    data = static_cast<VisV8TlsData*>(pthread_getspecific(visv8_out_key));
++
++    // If it doesn't exist yet, initialize it
++    if (!data) {
++      // This will initialize all our state and open the [first] log file (or
++      // die)
++      data = new VisV8TlsData();
++      DCHECK_NE(data, nullptr);
++
++      if (pthread_setspecific(visv8_out_key, data)) {
++        perror("pthread_setspecific");
++      } else {
++        // Another hack: since pthreads doesn't call thread destructors on the
++        // "main thread" (since it doesn't call pthread_exit), and since calling
++        // pthread_exit inside an atexit() handler is NO BUENO (it can and will
++        // disrupt clean process shutdown), we need to set up a special ad hoc
++        // thread destructor for the "main thread" using atexit EXTRA HACKY:
++        // there is no portable pthreads API for determining "main thread"
++        // status; use this Linux-only hack for now...
++        if (syscall(SYS_gettid) == getpid()) {
++          atexit(visv8_tls_fini);
++        }
++      }
++    }
++
++    // Check for Isolate/scriptID invalidation based on current isolate
++    if (current_isolate != data->last_isolate) {
++      data->reset_isolate(current_isolate);
++    }
++
++    // Bump our recursion count
++    ++data->rcount;
++  }
++
++  // On cleanup of this context, decrement our recursion count
++  ~VisV8Context() { --data->rcount; }
++
++  bool isolate_changed() const { return data->isolate_changed; }
++
++  bool is_recursive() const { return data->rcount > 1; }
++
++  friend class VisV8Logger;
++};
++
++// RAII "handle" to VisV8 context's logging stream (lexically-scoped,
++// short-lived) (right now, trivially simple; if we later add in more
++// complicated [synchronized] log flushing, this will hide all of that nicely)
++class VisV8Logger {
++  VisV8TlsData* data;
++
++ public:
++  VisV8Logger() = delete;
++  VisV8Logger(const VisV8Logger&) = delete;
++
++  explicit VisV8Logger(const VisV8Context& context) : data(context.data) {
++    auto current_isolate =
++        data->last_isolate;  // Assume no change in isolate from the creation of
++                             // our context handle (lexical lifetimes)
++
++    // If the context has observed an isolate change, log that first...
++    if (context.isolate_changed()) {
++      data->log_isolate();
++    }
++
++    // Then, log the origin (which does its own caching/skipping logic)
++    data->log_origin(current_isolate);
++
++    // Now check script ID: has it changed?
++    StackTraceFrameIterator it(current_isolate);
++    if (!it.done() && it.is_javascript()) {
++      auto script = it.javascript_frame()->script();
++
++      if (script.id() != data->last_script_id) {
++        // OK, is this a new script we've never seen before?
++        if (!data->check_sid(current_isolate, script.id())) {
++          // Yes--log that script's source/genealogy
++          data->log_script(current_isolate, script);
++        }
++
++        // Update our last-script-id and log the active script ID
++        data->last_script_id = script.id();
++        out() << '!' << script.id() << '\n';
++      }
++    } else {
++      // Weird--we can't tell! (and this breaks our last script-id)
++      out() << "!?\n";
++      data->last_script_id = -1;
++    }
++  }
++
++  ~VisV8Logger() {
++    out() << std::endl;
++
++    // Trap I/O errors as fatal
++    if (!out()) {
++      perror("log output");
++      abort();
++    }
++
++    // Check to see if our log has grown too large; rollover...
++    if (out().tellp() > 1000 * 1000 * 1000) {  // Max 1GB per log file
++      data->open_next_log_file();
++    }
++  }
++
++  // Public access to the logging stream
++  std::ostream& out() const { return data->log; }
++};
++
++// Predicate to see if an object (for property load/store) is worth logging
++static bool visv8_should_log_object(Object obj) {
++  if (obj.IsPrimitive()) {
++    // Never log accesses on primitive values
++    return false;
++  }
++
++  HeapObject hobj = HeapObject::cast(obj);
++  auto itype = hobj.map().instance_type();
++  return ((itype == JS_GLOBAL_OBJECT_TYPE) || (itype == JS_GLOBAL_PROXY_TYPE) ||
++          (itype == JS_SPECIAL_API_OBJECT_TYPE) ||
++          (itype == JS_API_OBJECT_TYPE));
++}
++
++// Helper to log property get (for easy extern access by the Reflect.get
++// builtin)
++void visv8_log_property_get(Isolate* isolate, int call_site, Object obj,
++                            Object prop) {
++  if (visv8_should_log_object(obj)) {
++    // Peek at the call stack to see our offset within the active script
++    if (call_site < 0) {
++      StackTraceFrameIterator it(isolate);
++      if (!it.done()) {
++        call_site = it.frame()->position();
++      }
++    }
++
++    VisV8Context vctx(isolate);
++    VisV8Logger vlog(vctx);
++
++    vlog.out() << 'g' << call_site << ':';
++    visv8_to_string(isolate, vlog.out(), obj);
++    vlog.out() << ':';
++    visv8_to_string(isolate, vlog.out(), prop);
++  }
++}
++
++RUNTIME_FUNCTION(Runtime_TracePropertyLoad) {
++  HandleScope hs(isolate);
++  CONVERT_ARG_CHECKED(Smi, call_site, 0);
++  CONVERT_ARG_CHECKED(Object, obj, 1);
++  CONVERT_ARG_CHECKED(Object, prop, 2);
++
++  visv8_log_property_get(isolate, Smi::ToInt(call_site), obj, prop);
++
++  return ReadOnlyRoots(isolate).undefined_value();
++}
++
++// Helper to log property set (for easy extern access by the Reflect.set
++// builtin)
++void visv8_log_property_set(Isolate* isolate, int call_site, Object obj,
++                            Object prop, Object value) {
++  if (visv8_should_log_object(obj)) {
++    // Peek at the call stack to see our offset within the active script
++    if (call_site < 0) {
++      StackTraceFrameIterator it(isolate);
++      if (!it.done()) {
++        call_site = it.frame()->position();
++      }
++    }
++
++    VisV8Context vctx(isolate);
++    VisV8Logger vlog(vctx);
++
++    vlog.out() << 's' << call_site << ':';
++    visv8_to_string(isolate, vlog.out(), obj);
++    vlog.out() << ':';
++    visv8_to_string(isolate, vlog.out(), prop);
++    vlog.out() << ':';
++    visv8_to_string(isolate, vlog.out(), value);
++  }
++}
++
++RUNTIME_FUNCTION(Runtime_TracePropertyStore) {
++  HandleScope hs(isolate);
++  CONVERT_ARG_CHECKED(Smi, call_site, 0);
++  CONVERT_ARG_CHECKED(Object, obj, 1);
++  CONVERT_ARG_CHECKED(Object, prop, 2);
++  CONVERT_ARG_CHECKED(Object, value, 3);
++
++  visv8_log_property_set(isolate, Smi::ToInt(call_site), obj, prop, value);
++
++  return ReadOnlyRoots(isolate).undefined_value();
++}
++
++// Special hack to allow callbacks from HandleApiCall hooks
++void visv8_log_api_call(Isolate* isolate, bool is_constructor, HeapObject func,
++                        Object receiver, BuiltinArguments& args) {
++  int call_site = -1;
++  VisV8Context vctx(isolate);
++
++  // Do all this logging business ONLY if we are NOT recursive
++  if (!vctx.is_recursive()) {
++    VisV8Logger vlog(vctx);
++
++    // Peek at the call stack to see our offset within the active script
++    StackTraceFrameIterator it(isolate);
++    if (!it.done()) {
++      call_site = it.frame()->position();
++    }
++
++    if (is_constructor) {
++      vlog.out() << 'n' << call_site << ':';
++      visv8_to_string(isolate, vlog.out(), func);
++    } else {
++      vlog.out() << 'c' << call_site << ':';
++      visv8_to_string(isolate, vlog.out(), func);
++      vlog.out() << ':';
++      visv8_to_string(isolate, vlog.out(), receiver);
++    }
++
++    for (int i = 1; i < args.length(); ++i) {
++      vlog.out() << ':';
++      visv8_to_string(isolate, vlog.out(), args[i], true, -1, true);
++    }
++  }
++}
++
++//------------------------------
++// END VisibleV8
++
+ RUNTIME_FUNCTION(Runtime_HaveSameMap) {
+   SealHandleScope shs(isolate);
+   DCHECK_EQ(2, args.length());
+diff --git a/src/runtime/runtime.h b/src/runtime/runtime.h
+index 045ffb3641..b7c470705c 100644
+--- a/src/runtime/runtime.h
++++ b/src/runtime/runtime.h
+@@ -556,6 +556,8 @@ namespace internal {
+   F(TierupFunctionOnNextCall, -1, 1)          \
+   F(TraceEnter, 0, 1)                         \
+   F(TraceExit, 1, 1)                          \
++  F(TracePropertyLoad, 3, 1)                  \
++  F(TracePropertyStore, 4, 1)                 \
+   F(TurbofanStaticAssert, 1, 1)               \
+   F(TypedArraySpeciesProtector, 0, 1)         \
+   F(UnblockConcurrentRecompilation, 0, 1)     \
