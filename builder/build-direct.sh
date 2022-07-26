@@ -71,4 +71,5 @@ cd $WD/src
 autoninja -C out/Default chrome v8_shell v8/test/unittests
 
 # copy artifacts
-cp out/chrome out/v8_shell /artifacts
+cp out/Default/chrome /artifacts/chrome-vv8-$VERSION
+cp out/Default/v8_shell /artifacts/vv8-shell-$VERSION
