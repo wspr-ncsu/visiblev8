@@ -61,16 +61,20 @@ cd $WD/src
 gclient sync -D --force --reset --with_branch_heads # --shallow --no-history
 
 ### Build config
-gn gen out/Release
+[ ! -d $WD/src/out/Release ] && mkdir -p $WD/src/out/Release
 # we need to provide the correct build args to enable targets like chrome/installer/linux:stable_deb
 cat >>out/Release/args.gn <<EOL
-is_component_build = true
+is_component_build = false
 is_debug = false
 symbol_level = 0
 enable_nacl = true
-remove_webcore_debug_symbols = true
 enable_linux_installer = true
-EOL  
+is_official_build=true
+use_thin_lto=false
+is_cfi=false
+chrome_pgo_phase=0
+EOL
+gn gen out/Release
 
 ### Apply VisibleV8 patches
 cd $WD/src/v8
@@ -79,10 +83,9 @@ patch -p1 <$LAST_PATCH_FILE
 cd $WD/src
 
 # building
-autoninja -C out/Release chrome v8_shell v8/test/unittests chrome/installer/linux:stable_deb chrome/tools/build/linux/make_zip 
+autoninja -C out/Release chrome v8_shell v8/test/unittests chrome/installer/linux:stable_deb
 
 # copy artifacts
 cp out/Release/chrome /artifacts/chrome-vv8-$VERSION
 cp out/Release/v8_shell /artifacts/vv8-shell-$VERSION
 cp out/Release/*.deb /artifacts/
-cp out/Release/*.zip /artifacts/
