@@ -38,7 +38,7 @@ echo $LAST_PATCH_FILE
 LAST_STABLE="$(get_latest_stable_version)"
 echo $LAST_STABLE;
 
-# checkout the stable chrome version and its dependencies
+### checkout the stable chrome version and its dependencies
 [ ! -d $WD/src ] && git clone --depth 4 --branch $VERSION https://chromium.googlesource.com/chromium/src.git $WD/src
 [ ! -d depot_tools ] && git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
 export PATH="$PATH:${DP}"
@@ -59,17 +59,30 @@ EOL
 cd $WD/src
 ./build/install-build-deps.sh
 gclient sync -D --force --reset --with_branch_heads # --shallow --no-history
-gn gen out/Default
 
-# patching
+### Build config
+gn gen out/Release
+# we need to provide the correct build args to enable targets like chrome/installer/linux:stable_deb
+cat >>out/Release/args.gn <<EOL
+is_component_build = true
+is_debug = false
+symbol_level = 0
+enable_nacl = true
+remove_webcore_debug_symbols = true
+enable_linux_installer = true
+EOL  
+
+### Apply VisibleV8 patches
 cd $WD/src/v8
 echo "Using $LAST_PATCH_FILE to patch V8"
 patch -p1 <$LAST_PATCH_FILE
 cd $WD/src
 
 # building
-autoninja -C out/Default chrome v8_shell v8/test/unittests
+autoninja -C out/Release chrome v8_shell v8/test/unittests chrome/installer/linux:stable_deb chrome/tools/build/linux/make_zip 
 
 # copy artifacts
-cp out/Default/chrome /artifacts/chrome-vv8-$VERSION
-cp out/Default/v8_shell /artifacts/vv8-shell-$VERSION
+cp out/Release/chrome /artifacts/chrome-vv8-$VERSION
+cp out/Release/v8_shell /artifacts/vv8-shell-$VERSION
+cp out/Release/*.deb /artifacts/
+cp out/Release/*.zip /artifacts/
