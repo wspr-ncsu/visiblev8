@@ -79,7 +79,7 @@ gn gen out/Release
 ### Apply VisibleV8 patches
 cd $WD/src/v8
 echo "Using $LAST_PATCH_FILE to patch V8"
-patch -p1 <$LAST_PATCH_FILE
+patch -p1 <$LAST_PATCH_FILE || >&2 echo "Run `docker commit $(docker ps -q -l) patch-failed` to analyze the failed patches."
 cd $WD/src
 
 # building
@@ -89,3 +89,7 @@ autoninja -C out/Release chrome v8_shell v8/test/unittests chrome/installer/linu
 cp out/Release/chrome /artifacts/chrome-vv8-$VERSION
 cp out/Release/v8_shell /artifacts/vv8-shell-$VERSION
 cp out/Release/*.deb /artifacts/
+cp -r out/Release/unittests /artifacts
+cp out/Release/icudtl.dat /artifacts
+cp out/Release/natives_blob.bin /artifacts
+cp out/Release/snapshot_blob.bin /artifacts
