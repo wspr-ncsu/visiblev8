@@ -1,6 +1,6 @@
 #!/bin/sh
 
-V8_SHELL="/artifacts/v8_shell"
+V8_SHELL=`find /artifacts/ -name "vv8-shell*"`
 UNITTESTS="/artifacts/unittests"
 
 WORKSPACE="/work"
