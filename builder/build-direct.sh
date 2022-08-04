@@ -86,10 +86,10 @@ cd $WD/src
 autoninja -C out/Release chrome v8_shell v8/test/unittests chrome/installer/linux:stable_deb
 
 # copy artifacts
-cp out/Release/chrome /artifacts/chrome-vv8-$VERSION
-cp out/Release/v8_shell /artifacts/vv8-shell-$VERSION
-cp out/Release/*.deb /artifacts/
-cp -r out/Release/unittests /artifacts
-cp out/Release/icudtl.dat /artifacts
-cp out/Release/natives_blob.bin /artifacts
-cp out/Release/snapshot_blob.bin /artifacts
+mkdir /artifacts/$VERSION/
+cp out/Release/chrome /artifacts/$VERSION/chrome-vv8-$VERSION
+cp out/Release/v8_shell /artifacts/$VERSION/vv8-shell-$VERSION
+cp out/Release/*.deb /artifacts/$VERSION/
+cp -r out/Release/unittests /artifacts/$VERSION/
+cp out/Release/icudtl.dat /artifacts/$VERSION/
+cp out/Release/snapshot_blob.bin /artifacts/$VERSION/
