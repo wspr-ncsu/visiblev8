@@ -11,6 +11,12 @@ RUN apt install -y binutils binutils-aarch64-linux-gnu binutils-arm-linux-gnueab
 # RUN --mount=type=tmpfs,destination=/build,tmpfs-mode=1770,tmpfs-size=53687091200
 RUN mkdir /build
 WORKDIR /build
+############################################################
+###### DEBUG ###############################################
+############################################################
+# COPY ./build/104.0.5112.79/src /build/104.0.5112.79/src
+# COPY ./build/depot_tools /build/depot_tools
+############################################################
 COPY build-direct.sh /tmp
 
-CMD /tmp/build-direct.sh
+ENTRYPOINT ["/tmp/build-direct.sh"]
