@@ -104,8 +104,8 @@ gn gen out/Release
 
 ### Apply VisibleV8 patches
 cd $WD/src/v8
-#echo "Using $LAST_PATCH_FILE to patch V8"
-#patch -p1 <$LAST_PATCH_FILE || >&2 echo "Run `docker commit $(docker ps -q -l) patch-failed` to analyze the failed patches."
+echo "Using $LAST_PATCH_FILE to patch V8"
+patch -p1 <$LAST_PATCH_FILE || >&2 echo "Run `docker commit $(docker ps -q -l) patch-failed` to analyze the failed patches."
 cd $WD/src
 
 # building
