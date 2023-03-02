@@ -5,7 +5,17 @@ Patches and build tools (with some tests) for turning Chromium into VisibleV8.
 The core patches are architecture and platform agnostic, but some of the logging code currently has implementation-detail dependencies on Linux.
 The [optional] build system is definitely Linux-specific.
 
-## Quick Start
+## Quick Start (updated March 2023)
+(These instructions are for building VV8 on Chromium 104. Find commit hashes of other versions [here](http://omahaproxy.appspot.com/), but make sure there's a matching patchset in `patches/` in this repository.)
+
+* Make sure you have [Docker](https://docs.docker.com/install/) and [Python 3](https://www.python.org/downloads/) and a lot of free disk space (e.g., 50GiB) for downloading and building Chromium
+* Clone this repository *(we will call the cloned working directory **$VV8**)*
+* Run `sudo ./run.sh 104.0.5112.79` from *inside* `$VV8/builder` *
+
+* Success !! You can find the `.deb` file inside `$VV8/builder/artifacts` *
+
+
+## (Deprecated) Quick Start
 
 (These instructions are for building VV8 on Chromium 75.  Find commit hashes of other versions [here](http://omahaproxy.appspot.com/), but make sure there's a matching patchset in `patches/` in this repository.)
 
