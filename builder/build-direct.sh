@@ -24,8 +24,7 @@ get_latest_stable_version() {
 }
 
 VV8="$(pwd)/visiblev8"
-#FIXME: load it from wspr-ncsu/visiblev8 when it's merged
-[ ! -d $VV8 ] && git clone https://github.com/kapravel/visiblev8.git $VV8
+[ ! -d $VV8 ] && git clone https://github.com/wspr-ncsu/visiblev8.git $VV8
 
 
 if [ -z "$1" ]
