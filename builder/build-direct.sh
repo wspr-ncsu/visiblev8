@@ -80,6 +80,8 @@ is_component_build = false
 use_thin_lto=false
 is_cfi=false
 chrome_pgo_phase=0
+v8_use_snapshot=true 
+v8_use_external_startup_data=true
 EOL
 # target_cpu="x64"
 else
@@ -98,6 +100,8 @@ v8_postmortem_support=true
 v8_use_external_startup_data=false
 v8_enable_i18n_support=false
 v8_static_library=true
+v8_use_snapshot=true 
+v8_use_external_startup_data=true
 EOL
 # target_cpu="x64"
 fi
