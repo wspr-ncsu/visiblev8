@@ -1,5 +1,9 @@
-all:
-	./run.sh
+.PHONY: build patch-debug clean
+
+build:
+	# to build a specific version, run:
+	# make build VERSION=104.0.5112.79
+	./run.sh $(VERSION)
 
 patch-debug:
 	docker commit $(docker ps -q -l) patch-fail
