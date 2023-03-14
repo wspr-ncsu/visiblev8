@@ -7,7 +7,7 @@ ARG RUN_USER=node
 COPY . $ARTIFACT_DIR
 
 RUN dpkg -i "$ARTIFACT_DIR/$PACKAGE_NAME.deb" || true
-RUN apt update && apt install -f -y
+RUN apt update && apt install -f --no-install-recommends --yes
 RUN dpkg -i "$ARTIFACT_DIR/$PACKAGE_NAME.deb"
 RUN rm "$ARTIFACT_DIR/$PACKAGE_NAME.deb"
 

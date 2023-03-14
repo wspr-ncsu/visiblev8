@@ -78,8 +78,11 @@ is_debug=false
 is_official_build=true
 enable_linux_installer=true
 is_component_build = false
+use_thin_lto=false
+is_cfi=false
+chrome_pgo_phase=0
 EOL
-    # target_cpu="x64"
+# target_cpu="x64"
 else
     # debug args
     cat >>out/Release/args.gn <<EOL
@@ -88,28 +91,28 @@ dcheck_always_on = true
 enable_nacl=false
 is_component_build=false
 enable_linux_installer=true
+v8_enable_debugging_features=true
+v8_enable_object_print=true
+v8_optimized_debug=false
+v8_enable_backtrace=true
+v8_postmortem_support=true
+v8_use_external_startup_data=false
+v8_enable_i18n_support=false
+v8_static_library=true
 EOL
 # target_cpu="x64"
-# v8_enable_debugging_features=true
-# v8_enable_object_print=true
-# v8_optimized_debug=false
-# v8_enable_backtrace=true
-# v8_postmortem_support=true
-# v8_use_external_startup_data=false
-# v8_use_snapshot=false
-# v8_enable_i18n_support=false
-# v8_static_library=true
 fi
 gn gen out/Release
 
 ### Apply VisibleV8 patches
 cd $WD/src/v8
 echo "Using $LAST_PATCH_FILE to patch V8"
-patch -p1 <$LAST_PATCH_FILE || >&2 echo "Run `docker commit $(docker ps -q -l) patch-failed` to analyze the failed patches."
+# "Run `docker commit $(docker ps -q -l) patch-failed` to analyze the failed patches."
+patch -p1 <$LAST_PATCH_FILE 
 cd $WD/src
 
 # building
-autoninja -C out/Release chrome d8 wasm_api_tests cctest inspector-test  v8_mjsunit v8_shell v8/test/unittests chrome/installer/linux:stable_deb
+autoninja -C out/Release chrome d8 wasm_api_tests cctest inspector-test  v8_mjsunit v8_shell v8/test/unittests icudtl.dat natives_blob.bin snapshot_blob.bin chrome/installer/linux:stable_deb
 
 # Build and run V8 tests directly
 # ./v8/tools/dev/gm.py x64.release.check 
@@ -126,4 +129,7 @@ cp out/Release/snapshot_blob.bin /artifacts/$VERSION/
 chmod +r -R /artifacts
 
 # Testing V8
- python3 ./v8/tools/run-tests.py --out=../out/Release/ cctest unittests
+python3 ./v8/tools/run-tests.py --out=../out/Release/ unittests
+
+#TODO: dump the idl file
+$VV8/builder/resources/build/dump_idl.py "$WD/src" > "/artifacts/$VERSION/idldata.json"

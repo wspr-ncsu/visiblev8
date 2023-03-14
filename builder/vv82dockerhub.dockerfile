@@ -8,7 +8,7 @@ ARG RUN_USER=node
 COPY ./artifacts $ARTIFACT_DIR
 
 RUN dpkg -i "$ARTIFACT_DIR/$VERSION/$PACKAGE_NAME" || true
-RUN apt update && apt install -f -y
+RUN apt update && apt install -f --no-install-recommends --yes
 RUN dpkg -i "$ARTIFACT_DIR/$VERSION/$PACKAGE_NAME"
 RUN rm "$ARTIFACT_DIR/$VERSION/$PACKAGE_NAME"
 
