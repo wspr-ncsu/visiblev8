@@ -1,12 +1,15 @@
 #!/bin/bash
 set -ex
 
+# the visiblev8 repository that will be mounted in the container
+VV8_DIR="$(pwd)/.."
+
 # cleanup any old builds (like build/103.0.5060.134)
 # sudo find build/ -type d -name '[0-9]*\.[0-9]*\.[0-9]*\.[0-9]*' | sudo xargs rm -rf
 
 
 docker build --platform linux/amd64 -t build-direct -f build-direct.dockerfile .
-docker run --platform linux/amd64 -v $(pwd)/artifacts:/artifacts -v $(pwd)/build:/build build-direct $1
+docker run --platform linux/amd64 -v $(pwd)/artifacts:/artifacts -v $(pwd)/build:/build build-direct -v $VV8_DIR:/build/visiblev8 $1
 
 ./vv82dockerhub.sh
 LATEST_IMAGE=`docker images --format='{{.ID}}' | head -1`
