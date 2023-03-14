@@ -6,8 +6,8 @@ build:
 	./run.sh $(VERSION)
 
 patch-debug:
-	docker commit $(docker ps -q -l) patch-fail
-	docker run -it -v $(pwd)/artifacts:/artifacts -v $(pwd)/build:/build -v $VV8_DIR:/build/visiblev8 --entrypoint=/bin/bash build-fail
+	docker commit $$(docker ps -q -l) patch-fail
+	docker run -it -v $$(pwd)/artifacts:/artifacts -v $$(pwd)/build:/build -v $$(dirname `pwd`):/build/visiblev8 --entrypoint=/bin/bash patch-fail
 
 clean:
 	# cleanup any old builds (like build/103.0.5060.134)
