@@ -80,6 +80,7 @@ if [ "$DEBUG" -eq "0" ]; then
     # production args
     cat >>out/Release/args.gn <<EOL
 enable_nacl=false
+dcheck_always_on=false
 is_debug=false
 is_official_build=true
 enable_linux_installer=true
@@ -94,7 +95,7 @@ else
     # debug args
     cat >>out/Release/args.gn <<EOL
 is_debug=true
-dcheck_always_on = true
+dcheck_always_on=true
 enable_nacl=false
 is_component_build=false
 enable_linux_installer=true
@@ -120,7 +121,7 @@ patch -p1 <$LAST_PATCH_FILE
 cd $WD/src
 
 # building
-autoninja -C out/Release chrome d8 wasm_api_tests cctest inspector-test  v8_mjsunit v8_shell v8/test/unittests icudtl.dat natives_blob.bin snapshot_blob.bin chrome/installer/linux:stable_deb
+autoninja -C out/Release chrome d8 wasm_api_tests cctest inspector-test  v8_mjsunit v8_shell v8/test/unittests icudtl.dat snapshot_blob.bin web_idl_database chrome/installer/linux:stable_deb
 
 # Build and run V8 tests directly
 # ./v8/tools/dev/gm.py x64.release.check 
@@ -134,10 +135,14 @@ cp out/Release/*.deb /artifacts/$VERSION/
 cp -r out/Release/unittests /artifacts/$VERSION/
 cp out/Release/icudtl.dat /artifacts/$VERSION/
 cp out/Release/snapshot_blob.bin /artifacts/$VERSION/
+# check here how to use web_idl_database.pickle: https://source.chromium.org/chromium/chromium/src/+/main:third_party/blink/renderer/bindings/scripts/web_idl/README.md
+cp out/Release/gen/third_party/blink/renderer/bindings/web_idl_database.pickle /artifacts/$VERSION/
+# cp out/Release/natives_blob.bin /artifacts/$VERSION/
 chmod +r -R /artifacts
 
 # Testing V8
-python3 ./v8/tools/run-tests.py --out=../out/Release/ unittests
+#TODO: run v8 tests
+# python3 ./v8/tools/run-tests.py --out=../out/Release/ unittests
 
-#TODO: dump the idl file
-$VV8/builder/resources/build/dump_idl.py "$WD/src" > "/artifacts/$VERSION/idldata.json"
+#TODO: old versions have a different way to dump the idl
+#$VV8/builder/resources/build/dump_idl.py "$WD/src" > "/artifacts/$VERSION/idldata.json"
