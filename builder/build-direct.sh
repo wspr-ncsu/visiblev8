@@ -4,7 +4,15 @@ set -ex
 DEBUG=1
 
 get_latest_patch_version() {
-    grep Chrome $VV8/patches/*/version.txt | awk '{print $2}' | sort -n | tail -n 1
+    # get the latest patch version available and set LAST_PATCH
+    if [ -z "$VERSION" ]; then
+        VERSION="$(get_latest_stable_version)"
+    fi
+    LAST_PATCH=`grep Chrome $VV8/patches/*/version.txt | grep $VERSION | awk '{print $2}' | sort -n | tail -n 1`
+    if [ -z "$LAST_PATCH" ]; then
+        echo "No patch found for $VERSION, using the latest patch"
+        LAST_PATCH=`grep Chrome $VV8/patches/*/version.txt | awk '{print $2}' | sort -n | tail -n 1`
+    fi
 }
 
 get_latest_patch_file() {
@@ -33,7 +41,7 @@ WD="/tmp/$VERSION"
 DP="$(pwd)/depot_tools"
 
 
-LAST_PATCH="$(get_latest_patch_version)"
+get_latest_patch_version
 echo $LAST_PATCH;
 LAST_PATCH_FILE="$(get_latest_patch_file)"
 echo $LAST_PATCH_FILE
