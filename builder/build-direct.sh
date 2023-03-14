@@ -1,7 +1,7 @@
 #!/bin/bash
 set -ex
 
-DEBUG=1
+DEBUG=0
 
 get_latest_patch_version() {
     # get the latest patch version available and set LAST_PATCH
