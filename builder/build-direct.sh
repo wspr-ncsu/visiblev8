@@ -34,13 +34,17 @@ VV8="$(pwd)/visiblev8"
 [ ! -d $VV8 ] && git clone https://github.com/wspr-ncsu/visiblev8.git $VV8
 
 
-if [ -z "$1" ]
-  then
+if [ -z "$1" ]; then
     echo "No Chrome version supplied. Will use the latest stable version."
     VERSION="$(get_latest_stable_version)"
     echo "Latest Chrome stable version is $VERSION"
 else
     VERSION=$1
+fi
+
+if [[ "$2" -eq 1 ]]; then
+    echo "Debug mode is on"
+    DEBUG=1
 fi
 
 WD="/tmp/$VERSION"
