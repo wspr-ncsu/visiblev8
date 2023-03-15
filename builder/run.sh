@@ -16,7 +16,7 @@ PACKAGE_NAME=`find ./artifacts -name '*.deb' -printf "%f\n" | sort | tail -n 1`
 VERSION=`echo $PACKAGE_NAME | grep -o -E '[0-9]*\.[0-9]*\.[0-9]*\.[0-9]*'`
 
 if [[ "$PUBLISH_ASSETS" -eq 1 ]]; then
-    ./vv82PUBLISH_ASSETS.sh $VERSION
+    ./vv82PUBLISH_ASSETS.sh $VERSION $PACKAGE_NAME
     ./github_release.sh $VERSION
 fi
 

@@ -1,16 +1,18 @@
 ARG BASE_IMAGE=node:lts
 FROM $BASE_IMAGE
 
-ARG ARTIFACT_DIR=/artifacts
+ARG ARTIFACT_DIR
 ARG PACKAGE_NAME
 ARG VERSION
 ARG RUN_USER=node
-COPY ./artifacts $ARTIFACT_DIR
+RUN mkdir -p /artifacts
+COPY $ARTIFACT_DIR/${VERSION}/*.deb /artifacts
+COPY $ARTIFACT_DIR/${VERSION}/*.pickle /artifacts
 
-RUN dpkg -i "$ARTIFACT_DIR/$VERSION/$PACKAGE_NAME" || true
+RUN dpkg -i "/artifacts/$PACKAGE_NAME" || true
 RUN apt update && apt install -f --no-install-recommends --yes
-RUN dpkg -i "$ARTIFACT_DIR/$VERSION/$PACKAGE_NAME"
-RUN rm "$ARTIFACT_DIR/$VERSION/$PACKAGE_NAME"
+RUN dpkg -i "/artifacts/$PACKAGE_NAME"
+RUN rm "/artifacts/$PACKAGE_NAME"
 
 USER $RUN_USER
 
