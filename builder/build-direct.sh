@@ -150,7 +150,7 @@ cp out/Release/snapshot_blob.bin /artifacts/$VERSION/
 # check here how to use web_idl_database.pickle: https://source.chromium.org/chromium/chromium/src/+/main:third_party/blink/renderer/bindings/scripts/web_idl/README.md
 cp out/Release/gen/third_party/blink/renderer/bindings/web_idl_database.pickle /artifacts/$VERSION/
 # cp out/Release/natives_blob.bin /artifacts/$VERSION/
-chmod +r -R /artifacts
+chmod +rw -R /artifacts
 
 # Testing V8
 #TODO: run v8 tests

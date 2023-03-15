@@ -1,3 +1,5 @@
 .vscode/
 builder/build
 builder/artifacts*
+builder/vv82dockerhub_password
+builder/github_token
