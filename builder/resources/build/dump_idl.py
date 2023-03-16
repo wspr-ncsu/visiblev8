@@ -56,7 +56,7 @@ def collect_idl_files(webkit_root):
             for idl in fnmatch.filter(files, "*.idl"):
                 idl_path = os.path.join(node, idl)
                 if '/testing/' in idl_path:
-                    print >>sys.stderr, "Ignoring 'testing' IDL file '%s'" % idl_path
+                    print("Ignoring 'testing' IDL file '%s'" % idl_path, file=sys.stderr)
                     continue
                 idl_data = rdr.read_idl_file(idl_path)
                 fcount += 1
@@ -77,7 +77,7 @@ def collect_idl_files(webkit_root):
                     except KeyError:
                         idl_map[iface] = [(idl_path, idef)]
 
-    print >>sys.stderr, "Processed %d IDL files" % fcount
+    print("Processed %d IDL files" % fcount, file=sys.stderr)
     return idl_map, imp_map, alias_map
 
 
@@ -179,7 +179,7 @@ def setup_path(chrome_root):
     global VARIANT
 
     if not os.path.isdir(chrome_root):
-        print >>sys.stderr, "error: %s is not a directory" % (chrome_root, )
+        print("error: %s is not a directory" % (chrome_root, ), file=sys.stderr)
         sys.exit(1)
     
     for vname, variant in VARIANT_MAP.items():
@@ -190,11 +190,11 @@ def setup_path(chrome_root):
         if os.path.isfile(os.path.join(script_dir, "idl_reader.py")):
             sys.path.append(os.path.join(script_dir)) 
             VARIANT = variant
-            print >>sys.stderr, "found chrome source tree variant '%s'" % vname
+            print("found chrome source tree variant '%s'" % vname, file=sys.stderr)
             break
 
     if not VARIANT:
-        print >>sys.stderr, "error: couldn't find necessary components under '%s'; are you sure it's chromium?" % chrome_root
+        print("error: couldn't find necessary components under '%s'; are you sure it's chromium?" % chrome_root, file=sys.stderr)
         sys.exit(1)
     
     return webkit_root
@@ -202,7 +202,7 @@ def setup_path(chrome_root):
 
 def main(argv):
     if len(argv) < 3:
-        print >>sys.stderr, "usage: %s CHROME_SOURCE_ROOT OUT_TYPE(json|csv)" % (argv[0],)
+        print("usage: %s CHROME_SOURCE_ROOT OUT_TYPE(json|csv)" % (argv[0],), file=sys.stderr)
         sys.exit(1)
 
     chrome_root = argv[1]
@@ -215,7 +215,7 @@ def main(argv):
     elif argv[2] == "csv":
         dump_provenance(idl_map, imp_map, alias_map)
     else:
-        print >>sys.stderr, "Unknown out type '%s'" % argv[2]
+        print("Unknown out type '%s'" % argv[2], file=sys.stderr)
         sys.exit(1)
 
 if __name__ == "__main__":

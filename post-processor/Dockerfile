@@ -8,7 +8,7 @@ RUN go build
 
 # Switch to target (stretch with dumb-init)
 FROM debian:stretch
-RUN apt update && apt install dumb-init
+RUN apt update && apt install --no-install-recommends --yes dumb-init
 RUN useradd -u 1000 -d /app vv8
 
 # Copy in build artifacts
