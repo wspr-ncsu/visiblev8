@@ -15,6 +15,7 @@ RUN dpkg -i "/artifacts/$PACKAGE_NAME"
 RUN rm "/artifacts/$PACKAGE_NAME"
 
 USER $RUN_USER
+WORKDIR /home/$RUN_USER
 
 ENV CHROME_EXE "/opt/chromium.org/chromium/chrome"
 ENTRYPOINT ["/opt/chromium.org/chromium/chrome"]
