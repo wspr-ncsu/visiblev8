@@ -1,4 +1,6 @@
 #!/bin/bash
+source .env
+
 ARTIFACT_DIR="./artifacts"
 VERSION=${1:-""}
 PACKAGE_NAME=${2:-""}
@@ -6,7 +8,7 @@ PACKAGE_NAME=${2:-""}
 TARGET_IMAGE="visiblev8/vv8-base:$VERSION"
 
 # login to docker hub
-cat vv82dockerhub_password | docker login --username visiblev8 --password-stdin
+echo $DOCKERHUB_PASSWORD | docker login --username visiblev8 --password-stdin
 
 # build the docker image
 docker build -t $TARGET_IMAGE -f vv82dockerhub.dockerfile --build-arg ARTIFACT_DIR=$ARTIFACT_DIR --build-arg PACKAGE_NAME=$PACKAGE_NAME --build-arg VERSION=$VERSION . || { echo -e '\033[0;31m***Building the docker image failed***\033[0m' ; exit 1; }
