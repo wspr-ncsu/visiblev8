@@ -3,8 +3,7 @@
 
 # Set variables
 TOKEN=$(cat github_token)
-#FIXME: change this to the official repo after testing
-REPO="kapravel/visiblev8"
+REPO="wspr-ncsu/visiblev8"
 TAG="$1"
 NAME="visiblev8-$TAG"
 BODY="This is the release for VisibleV8 based on Chromium $TAG."
