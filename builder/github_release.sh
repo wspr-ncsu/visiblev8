@@ -12,15 +12,15 @@ cd artifacts
 
 # Create a release
 RELEASE=$(curl -s -X POST \
-  -H "Authorization: token $GITHUB_TOKEN" \
+  -H "Authorization: Bearer $GITHUB_TOKEN" \
   -H "Content-Type: application/json" \
   -d "{\"tag_name\": \"$TAG\", \"target_commitish\": \"master\", \"name\": \"$NAME\", \"body\": \"$BODY\", \"draft\": false, \"prerelease\": false}" \
   "https://api.github.com/repos/$REPO/releases")
+echo $RELEASE
 
 # Extract the upload_url value
 UPLOAD_URL=$(echo $RELEASE | jq -r .upload_url | cut -d{ -f1)
-
-if [ -z "$UPLOAD_URL" ]; then
+if [ "$UPLOAD_URL" == "null" ]; then
     echo "Error: Failed to create release"
     exit 1
 fi
@@ -29,8 +29,8 @@ fi
 tar -czvf $FILE.tar.gz $FILE/*.deb $FILE/*.pickle 
 
 # Upload the asset file
-curl -s -X POST \
-  -H "Authorization: token $GITHUB_TOKEN" \
+curl -X POST \
+  -H "Authorization: Bearer $GITHUB_TOKEN" \
   -H "Content-Type: application/gzip" \
   --data-binary @$FILE.tar.gz \
   "$UPLOAD_URL?name=$FILE.tar.gz&label=$FILE.tar.gz"
