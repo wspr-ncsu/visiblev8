@@ -403,7 +403,7 @@ func invoke(args []string, topLevel bool) error {
 			if outputFormat == "mongresql" {
 				// Do we need to connect to PG? (we rely on the PGxxx environment variables being set...)
 				if aggCtx.SQLDb == nil {
-					aggCtx.SQLDb, err = sql.Open("postgres", "")
+					aggCtx.SQLDb, err = sql.Open("postgres", "sslmode=disable")
 					if err != nil {
 						return err
 					}
