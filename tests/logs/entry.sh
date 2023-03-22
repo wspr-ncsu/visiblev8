@@ -1,6 +1,6 @@
 #!/bin/sh
 
-PACKAGE_NAME=`find /artifacts -name "vv8-shell*" -printf "%f\n"  | sort | tail -n 1`
+PACKAGE_NAME=`find /artifacts -name "vv8-shell*" -printf "%f\n"  | sort -V | tail -n 1`
 VERSION=`echo $PACKAGE_NAME | grep -o -E '[0-9]*\.[0-9]*\.[0-9]*\.[0-9]*'`
 V8_SHELL="/artifacts/$VERSION/vv8-shell-$VERSION"
 UNITTESTS="/artifacts/$VERSION/unittests"

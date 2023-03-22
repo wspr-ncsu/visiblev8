@@ -8,18 +8,18 @@ get_latest_patch_version() {
     if [ -z "$VERSION" ]; then
         VERSION="$(get_latest_stable_version)"
     fi
-    LAST_PATCH=`grep Chrome $VV8/patches/*/version.txt | grep $VERSION | awk '{print $2}' | sort -n | tail -n 1`
+    LAST_PATCH=`grep Chrome $VV8/patches/*/version.txt | grep $VERSION | awk '{print $2}' | sort -V | tail -n 1`
     if [ -z "$LAST_PATCH" ]; then
-        LAST_PATCH=`grep Chrome $VV8/patches/*/version.txt | awk '{print $2}' | sort -n | tail -n 1`
+        LAST_PATCH=`grep Chrome $VV8/patches/*/version.txt | awk '{print $2}' | sort -V | tail -n 1`
         echo "No patch found for $VERSION, using the latest patch $LAST_PATCH"
     fi
 }
 
 get_latest_patch_file() {
-    LAST_PATCH_FILE=`grep $LAST_PATCH $VV8/patches/*/version.txt | awk '{print $1}' | sort -n | tail -n 1 | sed "s/:Chrome//" | sed "s/version.txt/trace-apis.diff/"`
+    LAST_PATCH_FILE=`grep $LAST_PATCH $VV8/patches/*/version.txt | awk '{print $1}' | sort -V | tail -n 1 | sed "s/:Chrome//" | sed "s/version.txt/trace-apis.diff/"`
     #FIXME: this is a hack to get the object patch, we should settle on one patch file moving forward
     if [ ! -f "$LAST_PATCH_FILE" ]; then
-        LAST_PATCH_FILE=`grep $LAST_PATCH $VV8/patches/*/version.txt | awk '{print $1}' | sort -n | tail -n 1 | sed "s/:Chrome//" | sed "s/version.txt/trace-apis-object.diff/"`
+        LAST_PATCH_FILE=`grep $LAST_PATCH $VV8/patches/*/version.txt | awk '{print $1}' | sort -V | tail -n 1 | sed "s/:Chrome//" | sed "s/version.txt/trace-apis-object.diff/"`
     fi
     if [ ! -f "$LAST_PATCH_FILE" ]; then
         echo "No patch file found for $LAST_PATCH"
