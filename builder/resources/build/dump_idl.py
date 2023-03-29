@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 '''Extract essential interface information out of the Blink/WebKit IDL files (using their tooling).
 '''
 import fnmatch
@@ -173,7 +173,7 @@ def dump_provenance(idl_map, imp_map, alias_map):
                         if op.name:
                             provenances.append(APIDef(iname, parent, alias, a.name, "True", "method", idl_path))
 
-    print >>sys.stdout, os.linesep.join(",".join(p) for p in provenances)
+    print(os.linesep.join(",".join(p) for p in provenances), file=sys.stdout)
 
 def setup_path(chrome_root):
     global VARIANT

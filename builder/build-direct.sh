@@ -156,5 +156,9 @@ chmod +rw -R /artifacts
 #TODO: run v8 tests
 # python3 ./v8/tools/run-tests.py --out=../out/Release/ unittests
 
-#TODO: old versions have a different way to dump the idl
-#$VV8/builder/resources/build/dump_idl.py "$WD/src" > "/artifacts/$VERSION/idldata.json"
+# Dump IDL data into a JSON file
+# version 98.0.4710.4 is where they appear to have changed to pickle file builds, so check if the version is less than that
+# and run the old script, otherwise run the new one
+[  "98.0.4710.4" != "`echo -e "98.0.4710.4\n$VERSION" | sort -V | head -n1`" ]  \
+    && $VV8/builder/resources/build/dump_idl.py "$WD/src" > "/artifacts/$VERSION/idldata.json" \
+    || python3 $VV8/builder/resources/build/visiblev8_idl_generator.py --chrome-root "$WD/src" > "/artifacts/$VERSION/idldata.json"
