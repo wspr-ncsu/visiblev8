@@ -1,5 +1,7 @@
 # VV8 Post Processor
 
+> **Note** This is fork of the post-processor repo located at the [visiblev8](https://github.com/wspr-ncsu/visiblev8)
+
 Swiss-Army dumping ground of logic related to VisibleV8 (VV8) trace log processing.
 Originally tightly integrated to a single workflow (i.e., many assumptions/dependencies w.r.t. databases and filenames); slowly being transmogrified into a standalone, modular toolkit.
 
@@ -20,7 +22,7 @@ You can combined multiple aggregation passes in a single run by specifying a `+`
 ## Input
 
 Log file input can be read from named log files or from `stdin` (by specifying `-` as a filename).
-Filenames prefixed by the `@` character are interpreted as MongoDB OIDs from our original MongoDB storage scheme; these require MongoDB credentials to be provided via environment variables; no more documentation on this is provided, as it is considered a deprecated feature.
+Filenames prefixed by the `@` character are interpreted as MongoDB OIDs from our original MongoDB storage scheme; these require MongoDB credentials to be provided via environment variables;
 
 ## Output Modes
 
@@ -30,24 +32,16 @@ The original workflow for which `vv8-post-processor` was written involved both M
 
 That said, a subsequent PostgreSQL-based workflow (via the `Mfeatures` aggregator; see the `mega` folder for schema details) has proved useful and fairly scalable, so you might want to check that out.
 
-## What are all these extra options?
+## Other options
 
-You don't need these features:
-
-* `-annotate`: a hack in which the post-processor was reused to feed logfile annotation data into a GUI tool
-* `-archive`: a mode for uploading VV8 log files into MongoDB while making a post-processing pass over them
-* `-dump`: works like the UNIX tool `cat`, simply streaming out the data read (useful for dumping logs out of MongoDB for manual inspection)
+* `-submission-id`: Specify the submission ID to which the logs are linked to
 * `-log-root`: a way to manually specify a base name for a log file when streaming data from `stdin`
-* `-page-id`: a way to force log data to be associated with a given "page record" in a particular MongoDB schema
-* `-webhook-server`: run the post-processor in server mode to facilitate certain back-end/batch-mode workflows
 
 ## What are all these aggregators?
 
-* `noop`: does what it says on the tin (i.e., nothing); a default placeholder to allow weirdo options like `-archive` and `-dump` to work more smoothly
+* `call_args` **(broken)**: A aggregator that records every call being made and the associated arguments
 * `poly_features/features`/`scripts`/`blobs`: 4 different output modes for a single input-processing pass (the original one, actually) that extracts polymorphic and monomorphic feature sites (locations within scripts that used a given feature and how many times; polymorphic and monomorphic instances kept separate), loaded script hashes and metadata (i.e.,  URL or eval-parent hash), and the full binary dump of loaded scripts
-* `create_element`: emits records of each call to `Document.createElement`, its script context/location, and its first argument (i.e., what kind of element was being created)
-* `causality`/`causality_graphml`: 2 different output modes for a single input-processing pass that uses a bunch of heuristics to try to reconstruct script provenance (what script loaded what other script); the later mode emits GraphML (i.e., XML)
-* `uscripts`: a not-very-useful dump of the SHA2/SHA3 hashes of scripts and URLs, but no eval data
-* `ufeatures`: a nice summary of features-touched both globally and by context-origin-URL
+* `create_element`**(broken)**: emits records of each call to `Document.createElement`, its script context/location, and its first argument (i.e., what kind of element was being created)
+* `causality`/`causality_graphml` **(broken)**: 2 different output modes for a single input-processing pass that uses a bunch of heuristics to try to reconstruct script provenance (what script loaded what other script); the later mode emits GraphML (i.e., XML)
+* `ufeatures`: a nice summary of features-touched globally on a per logfile basis
 * `Mfeatures`: the latest and probably best/richest aggregation of data into a fairly normalized entity-relationship schema of script/instance/feature/usage; requires PostgreSQL (see `mega/postgres_schema.sql`)
-

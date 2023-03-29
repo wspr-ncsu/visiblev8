@@ -8,9 +8,10 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/lib/pq"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	pubsuf "golang.org/x/net/publicsuffix"
-	"gopkg.in/mgo.v2/bson"
 )
 
 // NullableRune returns either string(<val>) (if not 0) or nil
@@ -32,9 +33,9 @@ func NullableString(val string) interface{} {
 }
 
 // NullableMongoOID returns either <val> (if .Valid() == true) or nil
-func NullableMongoOID(val bson.ObjectId) interface{} {
+func NullableMongoOID(val string) interface{} {
 	var nullable interface{}
-	if val.Valid() {
+	if primitive.IsValidObjectID(val) {
 		nullable = val
 	}
 	return nullable
@@ -125,7 +126,7 @@ func BulkInsertRows(sqlDb *sql.DB, functionName, tableName string, fieldNames []
 				return 0, err
 			}
 			rowCount++
-			if time.Now().Sub(lastProgressReport) >= (time.Second * 5) {
+			if time.Since(lastProgressReport) >= (time.Second * 5) {
 				log.Printf("%s: processed %d records so far...\n", functionName, rowCount)
 				lastProgressReport = time.Now()
 			}
@@ -301,4 +302,21 @@ ON CONFLICT DO NOTHING;
 	log.Printf("urlBakery.insertBakedURLs: inserted %d (out of %d) import rows\n", insertRows, importRows)
 
 	return nil
+}
+
+func GetRootDomain(db *sql.DB, ln *LogInfo) (string, error) {
+	log.Printf("GetRootDomain %s", ln.SubmissionID)
+	if ln.SubmissionID == uuid.Nil {
+		return "", nil // no root domain for this log but that's ok
+	}
+
+	// Get the root domain from the database
+	var rootDomain string
+	err := db.QueryRow("SELECT url FROM vv8_backend.submissions WHERE id = $1", ln.SubmissionID).Scan(&rootDomain)
+
+	if err != nil {
+		return "", err
+	}
+
+	return rootDomain, nil
 }

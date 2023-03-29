@@ -5,7 +5,6 @@ package causality
 // ---------------------------------------------------------------------------
 
 import (
-	"bytes"
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
@@ -20,8 +19,6 @@ import (
 	"github.com/yaricom/goGraphML/graphml"
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
-	mgo "gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
 
 	"github.ncsu.edu/jjuecks/vv8-post-processor/core"
 	"github.ncsu.edu/jjuecks/vv8-post-processor/features"
@@ -376,7 +373,7 @@ func generateGraphML(records []causalityRecord, ctx *core.AggregationContext) (*
 		}
 	}
 
-	graph, err := gml.AddGraph(fmt.Sprintf("%s(pageId=%s)", ctx.Ln.RootName, ctx.Ln.PageID), graphml.EdgeDirectionDirected, nil)
+	graph, err := gml.AddGraph(fmt.Sprintf("%s", ctx.Ln.RootName), graphml.EdgeDirectionDirected, nil)
 	if err != nil {
 		log.Println("error creating graph object")
 		return nil, err
@@ -538,12 +535,9 @@ var scriptCausalityFields = [...]string{
 	"child_cardinality",
 }
 
+/*
 // graphmlMongoOutput combines GraphML generation with upload/saving to Mongo and marking the vv8log complete for "causality_graphml"
 func graphmlMongoOutput(records []causalityRecord, ctx *core.AggregationContext, mongoDb *mgo.Database) error {
-	if !ctx.Ln.PageID.Valid() {
-		return fmt.Errorf("cannot save causality_graphml output to Mongo without a valid log PageID")
-	}
-
 	gml, err := generateGraphML(records, ctx)
 	if err != nil {
 		log.Printf("error converting causality tuples into goGraphML graph object (%s)", err)
@@ -556,34 +550,32 @@ func graphmlMongoOutput(records []causalityRecord, ctx *core.AggregationContext,
 		log.Printf("error serializing causality graph to GraphML (%s)", err)
 		return err
 	}
+	/*
 
-	hash, oid, err := core.ArchiveBlob(mongoDb, fmt.Sprintf("script-causality-%s(pageId=%s).graphml", ctx.Ln.RootName, ctx.Ln.PageID), buf.Bytes(), false, nil)
-	if err != nil {
-		log.Printf("error saving GraphML output to MongoDB blob (%s)", err)
-		return err
-	}
+		hash, oid, err := core.ArchiveBlob(mongoDb, fmt.Sprintf("script-causality-%s(pageId=%s).graphml", ctx.Ln.RootName, ctx.Ln.PageID), buf.Bytes(), false, nil)
+		if err != nil {
+			log.Printf("error saving GraphML output to MongoDB blob (%s)", err)
+			return err
+		}
 
-	doc := bson.M{
-		"$set": bson.M{
-			"scriptCausalityGraphBlob": oid,
-			"scriptCausalityGraphHash": hash,
-		},
-	}
-	err = mongoDb.C("pages").UpdateId(ctx.Ln.PageID, doc)
-	if err != nil {
-		log.Printf("error linking GraphML blob hash (%s) and oid (%s) to owning page record (OID=%s) (%s)", hash, oid, ctx.Ln.PageID, err)
-		return err
-	}
-
-	err = core.MarkVV8LogComplete(mongoDb, ctx.Ln.ID, "causality_graphml")
-	if err != nil {
-		log.Printf("error updating vv8logs record to mark 'causality_graphml' completion (%s)", err)
-		return err
-	}
+		doc := bson.M{
+			"$set": bson.M{
+				"scriptCausalityGraphBlob": oid,
+				"scriptCausalityGraphHash": hash,
+			},
+		}
+		err = mongoDb.C("pages").UpdateId(ctx.Ln.PageID, doc)
+		if err != nil {
+			log.Printf("error linking GraphML blob hash (%s) and oid (%s) to owning page record (OID=%s) (%s)", hash, oid, ctx.Ln.PageID, err)
+			return err
+		}
+*/ /*
 
 	return nil
 }
+*/
 
+/*
 // DumpToMongo produces a causality graph and saves it as a GraphML (XML) blob to MongoDB under db.scriptGraphs[pageId=ctx.Ln.PageID]
 func (agg *ScriptCausalityAggregator) DumpToMongo(ctx *core.AggregationContext, mongoDb *mgo.Database) error {
 	if ctx.Formats["causality_graphml"] {
@@ -602,25 +594,28 @@ func (agg *ScriptCausalityAggregator) DumpToMongo(ctx *core.AggregationContext, 
 	}
 	return nil
 }
+*/
 
 // DumpToMongresql can trigger both the new GraphML-blob-save-to-Mongo logic and the old-n-busted save-links-to-Postgres logic
-func (agg *ScriptCausalityAggregator) DumpToMongresql(ctx *core.AggregationContext, mongoDb *mgo.Database, sqlDb *sql.DB) error {
+func (agg *ScriptCausalityAggregator) DumpToMongresql(ctx *core.AggregationContext, sqlDb *sql.DB) error {
 	records, err := agg.causalityDumper(ctx)
 	if err != nil {
 		return err
 	}
 
-	if ctx.Formats["causality_graphml"] {
-		err = graphmlMongoOutput(records, ctx, mongoDb)
-		if err != nil {
-			log.Printf("error generating/saving GraphML (%s)", err)
-			return err
+	/*
+		if ctx.Formats["causality_graphml"] {
+			err = graphmlMongoOutput(records, ctx, mongoDb)
+			if err != nil {
+				log.Printf("error generating/saving GraphML (%s)", err)
+				return err
+			}
 		}
-	}
+	*/
 
 	if ctx.Formats["causality"] {
 		// Create log record if necessary (need job domain for that)
-		visitDomain, err := core.GetRootDomain(mongoDb, ctx.Ln)
+		visitDomain, err := core.GetRootDomain(sqlDb, ctx.Ln)
 		if err != nil {
 			return err
 		}
@@ -688,11 +683,6 @@ func (agg *ScriptCausalityAggregator) DumpToMongresql(ctx *core.AggregationConte
 		}
 		err = txn.Commit()
 		if err != nil {
-			return err
-		}
-
-		// Update the Mongo document store about the completed analysis
-		if err := core.MarkVV8LogComplete(mongoDb, ctx.Ln.ID, "causality"); err != nil {
 			return err
 		}
 	}

@@ -13,8 +13,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/google/uuid"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/sha3"
-	"gopkg.in/mgo.v2/bson"
 )
 
 // Take a raw log string, expand all escape sequences, and split it into fields
@@ -106,11 +107,13 @@ func splitFields(line []byte) []string {
 }
 
 // NewLogInfo constructs a fresh LogInfo for the given vv8log Mongo oid (if available) and root log filename (if available)
-func NewLogInfo(oid bson.ObjectId, rootName string) *LogInfo {
+func NewLogInfo(oid primitive.ObjectID, rootName string, submissionID uuid.UUID) *LogInfo {
 	return &LogInfo{
-		ID:       oid,
-		RootName: rootName,
-		Isolates: make(map[string]*IsolateInfo),
+		MongoID:      oid,
+		SubmissionID: submissionID,
+		ID:           uuid.New(),
+		RootName:     rootName,
+		Isolates:     make(map[string]*IsolateInfo),
 	}
 }
 
@@ -130,51 +133,38 @@ func (ln *LogInfo) resetContext() {
 }
 
 func (ln *LogInfo) addScript(id int, src string, code string) *ScriptInfo {
-	script, ok := ln.World.Scripts[id]
-	if !ok {
-		script = NewScriptInfo(ln.World, id, code, ln.World.Context.Origin)
+	_, ok := ln.World.Scripts[id]
 
-		// Determine source: URL or eval-parent?
-		parentID, err := strconv.Atoi(src)
-		if err != nil {
-			// A string
-			src, _ = StripQuotes(src)
-
-			// URL-based script
-			script.setURL(src)
-
-			// Special case: is this a visible-v8:// script? (or a puppeteer-eval'd script?)
-			if strings.HasPrefix(src, "visible-v8://") || strings.HasSuffix(code, "//# sourceURL=__puppeteer_evaluation_script__\n)") {
-				script.VisibleV8 = true
-
-				// Special-special case: does this script name end in "/id.js", indicating it's our job id?
-				if strings.HasSuffix(src, "/id.js") {
-					job := src[13 : len(src)-6]
-					if ln.Job != "" {
-						panic(fmt.Errorf("new vv8 job ID '%s' (previous one '%s')", job, ln.Job))
-					}
-					ln.Job = job
-					log.Printf("picked up job ID '%s'", job)
-					if bson.IsObjectIdHex(job) {
-						ln.PageID = bson.ObjectIdHex(job)
-						log.Printf("interpreting job ID as PageID (new schema)")
-					}
-				}
-			}
-		} else {
-			var parentScript *ScriptInfo
-			parentScript, ok = ln.World.Scripts[parentID]
-			if !ok {
-				panic(fmt.Errorf("unknown parent script ID %d in isolate %s", parentID, ln.World.ID))
-			}
-			script.setEvaledBy(parentScript)
-			script.VisibleV8 = parentScript.VisibleV8
-		}
-
-		ln.World.Scripts[id] = script
-	} else {
+	if ok {
 		panic(fmt.Errorf("redefining script ID %d in isolate %s", id, ln.World.ID))
 	}
+	script := NewScriptInfo(ln.World, id, code, ln.World.Context.Origin)
+
+	// Determine source: URL or eval-parent?
+	parentID, err := strconv.Atoi(src)
+	if err != nil {
+		// A string
+		src, _ = StripQuotes(src)
+
+		// URL-based script
+		script.setURL(src)
+
+		// Special case: is this a visible-v8:// script? (or a puppeteer-eval'd script?)
+		if strings.HasSuffix(code, "//# sourceURL=__puppeteer_evaluation_script__\n)") {
+			script.VisibleV8 = true
+		}
+	} else {
+		var parentScript *ScriptInfo
+		parentScript, ok = ln.World.Scripts[parentID]
+		if !ok {
+			panic(fmt.Errorf("unknown parent script ID %d in isolate %s", parentID, ln.World.ID))
+		}
+		script.setEvaledBy(parentScript)
+		script.VisibleV8 = parentScript.VisibleV8
+	}
+
+	ln.World.Scripts[id] = script
+
 	return script
 }
 

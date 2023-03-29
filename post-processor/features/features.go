@@ -7,6 +7,7 @@ package features
 // * feature usage from polymorphic callsites ("poly_features")
 
 import (
+	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
@@ -17,8 +18,6 @@ import (
 	"strings"
 
 	"github.com/lib/pq"
-	mgo "gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
 
 	"github.ncsu.edu/jjuecks/vv8-post-processor/core"
 )
@@ -101,9 +100,7 @@ func (agg *FeatureUsageAggregator) IngestRecord(ctx *core.ExecutionContext, line
 			rcvr, _ = core.StripCurlies(fields[2])
 			name, _ = core.StripQuotes(fields[1])
 			// Eliminate "native" prefix indicator from function names
-			if strings.HasPrefix(name, "%") {
-				name = name[1:]
-			}
+			name = strings.TrimPrefix(name, "%")
 		case 's':
 			rcvr, _ = core.StripCurlies(fields[1])
 			name, _ = core.StripQuotes(fields[2])
@@ -114,6 +111,10 @@ func (agg *FeatureUsageAggregator) IngestRecord(ctx *core.ExecutionContext, line
 			// Oops--what was this?
 			log.Printf("%d: wat? %c: %v", lineNumber, op, fields)
 			return nil
+		}
+
+		if strings.Contains(rcvr, ",") {
+			rcvr = strings.Split(rcvr, ",")[1]
 		}
 
 		// We have some names (V8 special cases, numeric indices) that are never useful
@@ -149,7 +150,14 @@ func (agg *FeatureUsageAggregator) IngestRecord(ctx *core.ExecutionContext, line
 	return fmt.Errorf("DumpToStream not implemented for FeatureUsageAggregator")
 }*/
 
-func (agg *FeatureUsageAggregator) dumpBlobs(ln *core.LogInfo, mongoDb *mgo.Database, sqlDb *sql.DB) error {
+var scriptBlobFields = [...]string{
+	"script_hash",
+	"script_code",
+	"sha256sum",
+	"size",
+}
+
+func (agg *FeatureUsageAggregator) dumpBlobs(ln *core.LogInfo, sqlDb *sql.DB) error {
 	blobMap := make(map[core.ScriptHash]string)
 	for _, iso := range ln.Isolates {
 		for _, script := range iso.Scripts {
@@ -158,21 +166,39 @@ func (agg *FeatureUsageAggregator) dumpBlobs(ln *core.LogInfo, mongoDb *mgo.Data
 			}
 		}
 	}
+
+	txn, err := sqlDb.Begin()
+	if err != nil {
+		return err
+	}
+
+	stmt, err := txn.Prepare(pq.CopyIn("script_blobs", scriptBlobFields[:]...))
+	if err != nil {
+		txn.Rollback()
+		return err
+	}
+
 	log.Printf("blob: %d unique scripts to archive", len(blobMap))
 	for scriptHash, scriptCode := range blobMap {
-		metaDoc := bson.M{"type": "script"}
-		if ln.PageID.Valid() {
-			metaDoc["pageId"] = ln.PageID
-		} else if ln.Job != "" {
-			metaDoc["job"] = ln.Job
-		}
-		_, oid, err := core.CompressBlob(mongoDb, "", []byte(scriptCode), metaDoc)
+		sha256sum := sha256.Sum256([]byte(scriptCode))
+		_, err := stmt.Exec(scriptHash.SHA2[:], scriptCode, sha256sum[:], len(scriptCode))
 		if err != nil {
+			txn.Rollback()
 			return err
 		}
-		log.Printf("blob: script %s -> oid %s", hex.EncodeToString(scriptHash.SHA2[:]), oid)
 	}
-	if err := core.MarkVV8LogComplete(mongoDb, ln.ID, "blobs"); err != nil {
+
+	_, err = stmt.Exec()
+	if err != nil {
+		txn.Rollback()
+	}
+	err = stmt.Close()
+	if err != nil {
+		txn.Rollback()
+		return err
+	}
+	err = txn.Commit()
+	if err != nil {
 		return err
 	}
 	return nil
@@ -203,23 +229,21 @@ var scriptCreationFields = [...]string{
 // InsertLogfile inserts (if not present) a record about this log file into PG
 func InsertLogfile(sqldb *sql.DB, ln *core.LogInfo) (int, error) {
 	query := `INSERT INTO logfile
-(mongo_id, job_id, root_name, size, lines) VALUES ($1, $2, $3, $4, $5)
+(mongo_id, uuid, root_name, size, lines) VALUES ($1, $2, $3, $4, $5)
 ON CONFLICT DO NOTHING`
-	var njobID sql.NullString
-	if ln.Job != "" {
-		njobID.Valid = true
-		njobID.String = ln.Job
-	}
-	_, err := sqldb.Exec(query, ln.ID, njobID, ln.RootName, ln.Stats.Bytes, ln.Stats.Lines)
+	_, err := sqldb.Exec(query, ln.MongoID, ln.ID.String(), ln.RootName, ln.Stats.Bytes, ln.Stats.Lines)
+
 	if err != nil {
 		return 0, err
 	}
 
 	var logID int
-	err = sqldb.QueryRow(`SELECT id FROM logfile WHERE mongo_id = $1`, ln.ID).Scan(&logID)
+
+	err = sqldb.QueryRow(`SELECT id FROM logfile WHERE uuid = $1`, ln.ID.String()).Scan(&logID)
 	if err != nil {
 		return 0, err
 	}
+
 	return logID, nil
 }
 
@@ -262,14 +286,14 @@ func (agg *FeatureUsageAggregator) dumpFeatureTuples(ln *core.LogInfo) (featureT
 	return result, nil
 }
 
-func (agg *FeatureUsageAggregator) storeFeatureTuplesMongresql(ln *core.LogInfo, mongoDb *mgo.Database, sqlDb *sql.DB) error {
+func (agg *FeatureUsageAggregator) storeFeatureTuplePostgresql(ln *core.LogInfo, sqlDb *sql.DB) error {
 	results, err := agg.dumpFeatureTuples(ln)
 	if err != nil {
 		return err
 	}
 
 	// First, look up our Job's alexa domain
-	visitDomain, err := core.GetRootDomain(mongoDb, ln)
+	visitDomain, err := core.GetRootDomain(sqlDb, ln)
 	if err != nil {
 		return err
 	}
@@ -322,11 +346,6 @@ func (agg *FeatureUsageAggregator) storeFeatureTuplesMongresql(ln *core.LogInfo,
 		return err
 	}
 
-	// Update the Mongo document store about the completed analysis
-	if err := core.MarkVV8LogComplete(mongoDb, ln.ID, "features"); err != nil {
-		return err
-	}
-
 	// TODO: log this to Mongo as well, for reference
 	log.Printf("features: emitted %d feature-usage tuples (%d suppressed for polymorphic callsite)",
 		len(results.tuples),
@@ -334,9 +353,9 @@ func (agg *FeatureUsageAggregator) storeFeatureTuplesMongresql(ln *core.LogInfo,
 	return nil
 }
 
-func (agg *FeatureUsageAggregator) dumpPolyFeatureTuples(ln *core.LogInfo, mongoDb *mgo.Database, sqlDb *sql.DB) error {
+func (agg *FeatureUsageAggregator) dumpPolyFeatureTuples(ln *core.LogInfo, sqlDb *sql.DB) error {
 	// First, look up our Job's alexa domain
-	visitDomain, err := core.GetRootDomain(mongoDb, ln)
+	visitDomain, err := core.GetRootDomain(sqlDb, ln)
 	if err != nil {
 		return err
 	}
@@ -402,10 +421,6 @@ func (agg *FeatureUsageAggregator) dumpPolyFeatureTuples(ln *core.LogInfo, mongo
 		return err
 	}
 
-	// Update the Mongo document store about the completed analysis
-	if err := core.MarkVV8LogComplete(mongoDb, ln.ID, "poly_features"); err != nil {
-		return err
-	}
 	// TODO: log this to mongo as well, for future reference
 	log.Printf("poly_features: emitted %d feature-usage tuples (%d suppressed for monomorphic callsite)", tupleCount, suppressCount)
 	return nil
@@ -431,14 +446,14 @@ func (agg *FeatureUsageAggregator) dumpScriptTuples(ln *core.LogInfo) ([]*core.S
 	return scripts, nil
 }
 
-func (agg *FeatureUsageAggregator) storeScriptTuplesMongresql(ctx *core.AggregationContext, mongoDb *mgo.Database, sqlDb *sql.DB) error {
+func (agg *FeatureUsageAggregator) storeScriptTuplesPostgresql(ctx *core.AggregationContext, sqlDb *sql.DB) error {
 	records, err := agg.dumpScriptTuples(ctx.Ln)
 	if err != nil {
 		return err
 	}
 
 	// Look up our Job's alexa domain
-	visitDomain, err := core.GetRootDomain(mongoDb, ctx.Ln)
+	visitDomain, err := core.GetRootDomain(sqlDb, ctx.Ln)
 	if err != nil {
 		return err
 	}
@@ -492,18 +507,14 @@ func (agg *FeatureUsageAggregator) storeScriptTuplesMongresql(ctx *core.Aggregat
 		return err
 	}
 
-	// Update the Mongo document store about the completed analysis
-	if err := core.MarkVV8LogComplete(mongoDb, ctx.Ln.ID, "scripts"); err != nil {
-		return err
-	}
 	return nil
 }
 
 // DumpToMongresql handles tuple and blob insertion for feature usage (mono/polymorphic callsites), script creation, and script archiving
-func (agg *FeatureUsageAggregator) DumpToMongresql(ctx *core.AggregationContext, mongoDb *mgo.Database, sqlDb *sql.DB) error {
+func (agg *FeatureUsageAggregator) DumpToPostgresql(ctx *core.AggregationContext, sqlDb *sql.DB) error {
 	// Dump [monomorphic callsite] usage tuples into Postgres
 	if ctx.Formats["features"] {
-		err := agg.storeFeatureTuplesMongresql(ctx.Ln, mongoDb, sqlDb)
+		err := agg.storeFeatureTuplePostgresql(ctx.Ln, sqlDb)
 		if err != nil {
 			return err
 		}
@@ -511,7 +522,7 @@ func (agg *FeatureUsageAggregator) DumpToMongresql(ctx *core.AggregationContext,
 
 	// Dump [polymorphic callsite] usage tuples into Postgres
 	if ctx.Formats["poly_features"] {
-		err := agg.dumpPolyFeatureTuples(ctx.Ln, mongoDb, sqlDb)
+		err := agg.dumpPolyFeatureTuples(ctx.Ln, sqlDb)
 		if err != nil {
 			return err
 		}
@@ -519,20 +530,18 @@ func (agg *FeatureUsageAggregator) DumpToMongresql(ctx *core.AggregationContext,
 
 	// Dump script tuples into Postgres
 	if ctx.Formats["scripts"] {
-		err := agg.storeScriptTuplesMongresql(ctx, mongoDb, sqlDb)
+		err := agg.storeScriptTuplesPostgresql(ctx, sqlDb)
 		if err != nil {
 			return err
 		}
 	}
-
 	// Dump script content blobs into Mongo
 	if ctx.Formats["blobs"] {
-		err := agg.dumpBlobs(ctx.Ln, mongoDb, sqlDb)
+		err := agg.dumpBlobs(ctx.Ln, sqlDb)
 		if err != nil {
 			return err
 		}
 	}
-
 	return nil
 }
 

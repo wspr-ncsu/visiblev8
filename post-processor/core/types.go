@@ -4,8 +4,9 @@ import (
 	"database/sql"
 	"errors"
 
-	mgo "gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	"github.com/google/uuid"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 // Core error values
@@ -27,30 +28,29 @@ type FormatSet map[string]bool
 
 // AggregationContext provides configuration/options
 type AggregationContext struct {
-	LogOid        bson.ObjectId // if present, used to tag db.vv8log[_id: LogId] complete
-	RootName      string        // if present, used to provide root-filename of possibly-fragmented log file
-	Archiving     bool          // are we archiving logs as we read them (from files)?
-	ArchivePageID bson.ObjectId // what page oid do we associate log files with (iff archiving == true)
-	Formats       FormatSet     // what formats are we outputting?
-	Ln            *LogInfo      // actual context structure
-	MongoDb       *mgo.Database // shared MongoDB connection (may be nil)
-	SQLDb         *sql.DB       // shared PG connection (may be nil)
+	LogOid       primitive.ObjectID // if present, used to tag db.vv8log[_id: LogId] complete
+	LogID        uuid.UUID          // a unique ID assigned to each and every log
+	SubmissionID uuid.UUID          // if present, used to provide the URL of the specific submission being processed
+	RootName     string             // if present, used to provide root-filename of possibly-fragmented log file
+	Formats      FormatSet          // what formats are we outputting?
+	Ln           *LogInfo           // actual context structure
+	MongoDb      *mongo.Database    // shared MongoDB connection (may be nil)
+	SQLDb        *sql.DB            // shared PG connection (may be nil)
 }
 
 // A LogInfo tracks all essential context information for a VV8 log under processing
 type LogInfo struct {
+	// A unique ID assigned to the log
+	ID uuid.UUID
+
 	// Database id of the vv8log record being processed
-	ID bson.ObjectId
+	MongoID primitive.ObjectID
 
 	// Root filename of this log stream
 	RootName string
 
-	// What is this log's discovered job ID?
-	Job string
-
-	// PageID is Job interpreted as a Hex OID
-	// (in our new schema, "Job" as such is DEPRECATED)
-	PageID bson.ObjectId
+	// What is this log's discovered submission ID?
+	SubmissionID uuid.UUID
 
 	// What is the current isolate for this log?
 	World *IsolateInfo

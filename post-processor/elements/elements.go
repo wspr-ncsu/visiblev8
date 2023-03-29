@@ -14,7 +14,6 @@ import (
 	"strings"
 
 	"github.com/lib/pq"
-	mgo "gopkg.in/mgo.v2"
 
 	"github.ncsu.edu/jjuecks/vv8-post-processor/core"
 	"github.ncsu.edu/jjuecks/vv8-post-processor/features"
@@ -49,23 +48,34 @@ func NewCreateElementAggregator() (core.Aggregator, error) {
 
 // IngestRecord parses a trace record, looking for document.createElement calls to track
 func (agg *CreateElementAggregator) IngestRecord(ctx *core.ExecutionContext, lineNumber int, op byte, fields []string) error {
-	if (op == 'c') && (ctx.Script != nil) && !ctx.Script.VisibleV8 && (ctx.Origin != "") {
+	if (op == 'c' || op == 'g') && (ctx.Script != nil) && !ctx.Script.VisibleV8 && (ctx.Origin != "") {
 		offset, err := strconv.Atoi(fields[0])
 		if err != nil {
 			return fmt.Errorf("%d: invalid script offset '%s'", lineNumber, fields[0])
 		}
 
-		rcvr, _ := core.StripCurlies(fields[2])
-		name, _ := core.StripQuotes(fields[1])
+		var rcvr, name string
 
-		// Eliminate "native" prefix indicator from function names
-		if strings.HasPrefix(name, "%") {
-			name = name[1:]
+		// only getters and callers are interesting
+		switch op {
+		case 'g':
+			rcvr, _ = core.StripCurlies(fields[1])
+			name, _ = core.StripQuotes(fields[2])
+		case 'c':
+			rcvr, _ = core.StripCurlies(fields[2])
+			name, _ = core.StripQuotes(fields[1])
+
+			name = strings.TrimPrefix(name, "%")
+		default: // ignore, we don't care about other ops
 		}
 
 		// We have some names (V8 special cases, numeric indices) that are never useful
 		if features.FilterName(name) {
 			return nil
+		}
+
+		if strings.Contains(rcvr, ",") {
+			rcvr = strings.Split(rcvr, ",")[1]
 		}
 
 		// Normalize IDL names
@@ -131,7 +141,7 @@ var elementCreationFields = [...]string{
 }
 
 // DumpToMongresql dumps create-element tuple records to Postgres
-func (agg *CreateElementAggregator) DumpToMongresql(ctx *core.AggregationContext, mongoDb *mgo.Database, sqlDb *sql.DB) error {
+func (agg *CreateElementAggregator) DumpToPostgresql(ctx *core.AggregationContext, sqlDb *sql.DB) error {
 	if ctx.Formats["create_element"] {
 		records := make([]createElementRecord, 0, 100)
 
@@ -148,7 +158,7 @@ func (agg *CreateElementAggregator) DumpToMongresql(ctx *core.AggregationContext
 		}
 
 		// Create log record if necessary (need job domain for that)
-		visitDomain, err := core.GetRootDomain(mongoDb, ctx.Ln)
+		visitDomain, err := core.GetRootDomain(sqlDb, ctx.Ln)
 		if err != nil {
 			return err
 		}
@@ -201,10 +211,6 @@ func (agg *CreateElementAggregator) DumpToMongresql(ctx *core.AggregationContext
 			return err
 		}
 
-		// Update the Mongo document store about the completed analysis
-		if err := core.MarkVV8LogComplete(mongoDb, ctx.Ln.ID, "create_element"); err != nil {
-			return err
-		}
 	}
 	return nil
 }

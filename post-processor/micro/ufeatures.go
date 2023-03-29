@@ -1,25 +1,15 @@
 package micro
 
 import (
+	"database/sql"
 	"encoding/json"
 	"io"
 	"log"
 	"strings"
 
-	mgo "gopkg.in/mgo.v2"
-
 	"github.ncsu.edu/jjuecks/vv8-post-processor/core"
 	"github.ncsu.edu/jjuecks/vv8-post-processor/features"
 )
-
-// UsageInfo provides the key type for our map of feature-tuple aggregates
-type UsageInfo struct {
-	// Active security origin
-	Origin string
-
-	// Feature name (generally, RECEVER_CTOR_NAME.ITEM_NAME)
-	Name string
-}
 
 // FeatureUsageAggregator implements the Aggregator interface for collecting minimal script API usage data
 type FeatureUsageAggregator struct {
@@ -54,9 +44,7 @@ func (agg *FeatureUsageAggregator) IngestRecord(ctx *core.ExecutionContext, line
 			rcvr, _ = core.StripCurlies(fields[2])
 			name, _ = core.StripQuotes(fields[1])
 			// Eliminate "native" prefix indicator from function names
-			if strings.HasPrefix(name, "%") {
-				name = name[1:]
-			}
+			name = strings.TrimPrefix(name, "%")
 		case 's':
 			rcvr, _ = core.StripCurlies(fields[1])
 			name, _ = core.StripQuotes(fields[2])
@@ -74,18 +62,24 @@ func (agg *FeatureUsageAggregator) IngestRecord(ctx *core.ExecutionContext, line
 			return nil
 		}
 
+		if strings.Contains(rcvr, ",") {
+			rcvr = strings.Split(rcvr, ",")[1]
+		}
+
 		// Compensate for OOP-polymorphism by normalizing names to their base IDL interface
 		fullName, err := agg.idl.NormalizeMember(rcvr, name)
-		if err == nil {
-			// We log only IDL-normalized members
-			// Stick it in our aggregation map
-			originSet, ok := agg.usage[ctx.Origin]
-			if !ok {
-				originSet = make(map[string]bool)
-				agg.usage[ctx.Origin] = originSet
-			}
-			originSet[fullName] = true
+		if err != nil {
+			return err
 		}
+
+		// We log only IDL-normalized members
+		// Stick it in our aggregation map
+		originSet, ok := agg.usage[ctx.Origin]
+		if !ok {
+			originSet = make(map[string]bool)
+			agg.usage[ctx.Origin] = originSet
+		}
+		originSet[fullName] = true
 	}
 
 	return nil
@@ -97,21 +91,13 @@ func (agg *FeatureUsageAggregator) DumpToStream(ctx *core.AggregationContext, st
 	if ctx.Formats["ufeatures"] /* for stream output, do not worry about whether or not we have a page-id */ {
 		completeFeatureSet := make(map[string]bool)
 		doc := core.JSONObject{
-			"logFile":        ctx.RootName,
-			"pageId":         ctx.Ln.PageID,
-			"allFeatures":    nil,
-			"featureOrigins": make(core.JSONArray, 0, len(agg.usage)),
+			"logFile":     ctx.RootName,
+			"allFeatures": nil,
 		}
-		for origin, featureSet := range agg.usage {
-			featureSetArray := make(core.JSONArray, 0, len(featureSet))
+		for _, featureSet := range agg.usage {
 			for name := range featureSet {
-				featureSetArray = append(featureSetArray, name)
 				completeFeatureSet[name] = true
 			}
-			doc["featureOrigins"] = append(doc["featureOrigins"].(core.JSONArray), core.JSONObject{
-				"origin":   origin,
-				"features": featureSetArray,
-			})
 		}
 		completeArray := make(core.JSONArray, 0, len(completeFeatureSet))
 		for feature := range completeFeatureSet {
@@ -124,45 +110,49 @@ func (agg *FeatureUsageAggregator) DumpToStream(ctx *core.AggregationContext, st
 	return nil
 }
 
-// DumpToMongo implementation for micro-feature-usage
-func (agg *FeatureUsageAggregator) DumpToMongo(ctx *core.AggregationContext, mongoDb *mgo.Database) error {
-	if ctx.Formats["ufeatures"] && ctx.Ln.PageID.Valid() {
-		completeFeatureSet := make(map[string]bool)
-		doc := core.JSONObject{
-			"logId":          ctx.Ln.ID,
-			"pageId":         ctx.Ln.PageID,
-			"allFeatures":    nil,
-			"featureOrigins": make(core.JSONArray, 0, len(agg.usage)),
+func (agg *FeatureUsageAggregator) DumpToPostgresql(ctx *core.AggregationContext, sqlDb *sql.DB) error {
+	if ctx.Formats["ufeatures"] {
+
+		logID, err := features.InsertLogfile(sqlDb, ctx.Ln)
+		if err != nil {
+			return err
 		}
-		for origin, featureSet := range agg.usage {
-			featureSetArray := make(core.JSONArray, 0, len(featureSet))
+
+		txn, err := sqlDb.Begin()
+		if err != nil {
+			return err
+		}
+
+		completeFeatureSet := make(map[string]bool)
+		for _, featureSet := range agg.usage {
 			for name := range featureSet {
-				featureSetArray = append(featureSetArray, name)
 				completeFeatureSet[name] = true
 			}
-			doc["featureOrigins"] = append(doc["featureOrigins"].(core.JSONArray), core.JSONObject{
-				"origin":   origin,
-				"features": featureSetArray,
-			})
 		}
 		completeArray := make(core.JSONArray, 0, len(completeFeatureSet))
 		for feature := range completeFeatureSet {
 			completeArray = append(completeArray, feature)
 		}
-		doc["allFeatures"] = completeArray
 
-		col := mongoDb.C("js_api_features")
-		err := col.Insert(doc)
+		featuresArray, err := json.Marshal(completeArray)
+		// We are creating this array show we should not have any errors
 		if err != nil {
 			return err
 		}
 
-		// Update the Mongo document store about the completed analysis
-		if err := core.MarkVV8LogComplete(mongoDb, ctx.Ln.ID, "ufeatures"); err != nil {
+		_, err = txn.Exec("INSERT INTO js_api_features_summary (logfile_id, all_features) VALUES ($1, $2)", logID, featuresArray)
+
+		if err != nil {
+			txn.Rollback()
 			return err
 		}
 
-		log.Printf("ufeatures -- saved %d distinct features used by %d distinct origins to Mongo js_api_features", len(completeArray), len(agg.usage))
+		err = txn.Commit()
+		if err != nil {
+			return err
+		}
+
 	}
 	return nil
+
 }
