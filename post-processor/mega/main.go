@@ -65,25 +65,25 @@ func (agg *usageAggregator) IngestRecord(ctx *core.ExecutionContext, lineNumber 
 			member, _ = core.StripQuotes(fields[2])
 		case 'n':
 			receiver, _ = core.StripCurlies(fields[1])
-			// Eliminate "native" prefix indicator from function names
-			if strings.HasPrefix(receiver, "%") {
-				receiver = receiver[1:]
-			}
+			receiver = strings.TrimPrefix(receiver, "%")
 		case 'c':
 			receiver, _ = core.StripCurlies(fields[2])
 			member, _ = core.StripQuotes(fields[1])
 
-			// Eliminate "native" prefix indicator from function names
-			if strings.HasPrefix(member, "%") {
-				member = member[1:]
-			}
+			member = strings.TrimPrefix(member, "%")
 		default:
 			return fmt.Errorf("%d: invalid mode '%c'; fields: %v", lineNumber, op, fields)
 		}
+
 		if features.FilterName(member) {
 			// We have some names (V8 special cases, numeric indices) that are never useful
 			return nil
 		}
+
+		if strings.Contains(receiver, ",") {
+			receiver = strings.Split(receiver, ",")[1]
+		}
+
 		var fullName string
 		if member != "" {
 			fullName = fmt.Sprintf("%s.%s", receiver, member)
@@ -161,8 +161,7 @@ func (agg *usageAggregator) DumpToStream(ctx *core.AggregationContext, stream io
 		jstream.Encode(core.JSONArray{"mega_instance", core.JSONObject{
 			"id":             id,
 			"script_id":      scriptHashes[script.CodeHash],
-			"page_id":        ctx.Ln.PageID.Hex(),
-			"logfile_id":     ctx.Ln.ID.Hex(),
+			"logfile_id":     ctx.Ln.ID.String(),
 			"isolate_ptr":    script.Isolate.ID,
 			"runtime_id":     script.ID,
 			"first_origin":   script.FirstOrigin,

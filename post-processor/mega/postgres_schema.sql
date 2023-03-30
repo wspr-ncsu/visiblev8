@@ -1,9 +1,35 @@
 -- WARNING: this schema depends on the `urls` tables from the VPC Postgres schema being available!
+CREATE TABLE IF NOT EXISTS urls_import_schema (
+    id SERIAL PRIMARY KEY NOT NULL,
+    sha256 BYTEA UNIQUE NOT NULL,
+    url_full TEXT,
+    url_scheme TEXT,
+    url_hostname TEXT,
+    url_port TEXT,
+    url_path TEXT,
+    url_query TEXT,
+    url_etld1 TEXT,
+    url_stemmed TEXT
+);
+
+CREATE TABLE IF NOT EXISTS urls (
+    id SERIAL PRIMARY KEY NOT NULL,
+    sha256 BYTEA UNIQUE NOT NULL,
+    url_full TEXT,
+    url_scheme TEXT,
+    url_hostname TEXT,
+    url_port TEXT,
+    url_path TEXT,
+    url_query TEXT,
+    url_etld1 TEXT,
+    url_stemmed TEXT
+);
 
 -- Record of each processed log file
 CREATE TABLE IF NOT EXISTS mega_logfile (
     id SERIAL PRIMARY KEY NOT NULL,     -- PG ID for FKs from other tables
-    mongo_oid BYTEA UNIQUE NOT NULL,    -- Mongo vv8log OID of raw log data record
+    uuid TEXT NOT NULL UNIQUE,          -- Unique UUID for this log file
+    mongo_oid BYTEA,    -- Mongo vv8log OID of raw log data record
     root_name TEXT NOT NULL,            -- Root name of log file as originally stored (prefix of all segment names)
     size BIGINT NOT NULL,               -- Aggregate size (bytes) of all log segments processed
     lines INT NOT NULL,                 -- Aggregate size (lines) of all log segments processed

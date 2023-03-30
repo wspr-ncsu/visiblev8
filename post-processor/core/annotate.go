@@ -12,7 +12,7 @@ import (
 
 // AnnotateStream is a simplified version of the core parser that just annotates raw lines
 func AnnotateStream(stream io.Reader, aggCtx *AggregationContext) error {
-	ln := NewLogInfo(aggCtx.LogOid, aggCtx.RootName)
+	ln := NewLogInfo(aggCtx.LogOid, aggCtx.RootName, aggCtx.SubmissionID)
 
 	// Read lines from input
 	scan := bufio.NewScanner(stream)

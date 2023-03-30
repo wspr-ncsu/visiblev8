@@ -9,14 +9,14 @@ import (
 // InsertLogfile inserts (if not present) a record about this log file into PG
 func InsertLogfile(sqldb *sql.DB, ln *core.LogInfo) (int, error) {
 	_, err := sqldb.Exec(`
-INSERT INTO mega_logfile (mongo_oid, root_name, size, lines, page_oid)
+INSERT INTO mega_logfile (mongo_oid, uuid, root_name, size, lines)
 	VALUES ($1, $2, $3, $4, $5)
 ON CONFLICT DO NOTHING`,
+		ln.MongoID.String(),
 		ln.ID,
 		ln.RootName,
 		ln.Stats.Bytes,
 		ln.Stats.Lines,
-		core.NullableMongoOID(ln.PageID),
 	)
 	if err != nil {
 		return 0, err
@@ -28,9 +28,10 @@ ON CONFLICT DO NOTHING`,
 	// We have a unique key here (the original Mongo OID), so just look it up
 	// after the upsert...
 	var logID int
-	err = sqldb.QueryRow(`SELECT id FROM mega_logfile WHERE mongo_oid = $1`, ln.ID).Scan(&logID)
+	err = sqldb.QueryRow(`SELECT id FROM mega_logfile WHERE uuid = $1`, ln.ID).Scan(&logID)
 	if err != nil {
 		return 0, err
+
 	}
 	return logID, nil
 }

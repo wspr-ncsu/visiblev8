@@ -1,7 +1,8 @@
 -- Record of each processed log file
 CREATE TABLE IF NOT EXISTS logfile (
 	id SERIAL PRIMARY KEY NOT NULL,	-- PG ID for FKs from other tables
-	mongo_id BYTEA UNIQUE NOT NULL,	-- Mongo vv8log OID of raw log data record
+	mongo_id BYTEA NOT NULL,	-- Mongo vv8log OID of raw log data record
+	uuid TEXT NOT NULL UNIQUE,		-- Unique UUID for this log file
 	job_id TEXT,					-- Associated job tag/id (IF KNOWN)
 	run_mongo_id BYTEA, 			-- Associated Mongo run.start OID (IF KNOWN)
 	root_name TEXT NOT NULL,		-- Root name of log file as originally stored (prefix of all segment names)
@@ -9,8 +10,19 @@ CREATE TABLE IF NOT EXISTS logfile (
 	lines INT NOT NULL				-- Aggregate size (lines) of all log segments processed
 );
 
+CREATE TABLE IF NOT EXISTS script_blobs (
+	id SERIAL PRIMARY KEY NOT NULL,
+	script_hash BYTEA NOT NULL,
+	script_code TEXT NOT NULL,
+	sha256sum BYTEA NOT NULL,
+	size INT NOT NULL
+);
 
-/*
+CREATE TABLE IF NOT EXISTS js_api_features_summary (
+	logfile_id INT REFERENCES logfile (id) NOT NULL,
+	all_features JSON NOT NULL
+);
+
 -- Feature usage information (for monomorphic callsites)
 CREATE TABLE IF NOT EXISTS feature_usage (
 	id SERIAL PRIMARY KEY NOT NULL,
@@ -96,4 +108,3 @@ CREATE TABLE IF NOT EXISTS page_captcha_systems (
 	logfile_mongo_oid BYTEA NOT NULL,
 	captcha_systems JSONB NOT NULL
 );
-*/

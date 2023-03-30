@@ -9,7 +9,6 @@ import (
 	"log"
 
 	"github.ncsu.edu/jjuecks/vv8-post-processor/core"
-	"gopkg.in/mgo.v2"
 )
 
 // scriptHashIDMap is used to map the global script body identifiers to Postgres FK IDs
@@ -22,7 +21,7 @@ type featureNameMap map[string]int
 type instanceMetaMap map[*core.ScriptInfo]int
 
 // mongresqlContext tracks the { item->FK ID } mappings built up over each step of the import process for use by later stages
-type mongresqlContext struct {
+type postgresqlContext struct {
 	logfileID   int             // the logfile all this stuff comes from (mega_logfile.id FK)
 	hashMap     scriptHashIDMap // map script hashes (SHA2/SHA3/Size) -> mega_scripts.id FK
 	instanceMap instanceMetaMap // map script instances (ptr to ScriptInfo) -> mega_instances.id FK
@@ -30,37 +29,35 @@ type mongresqlContext struct {
 }
 
 // DumpToMongresql handles bulk-insert of activity records into Postgres (we don't use MongoDB for any output)
-func (agg *usageAggregator) DumpToMongresql(ctx *core.AggregationContext, mongoDb *mgo.Database, sqlDb *sql.DB) error {
+func (agg *usageAggregator) DumpToPostgresql(ctx *core.AggregationContext, sqlDb *sql.DB) error {
 	var err error
-	var mctx mongresqlContext
+	var pctx postgresqlContext
 
 	// Step 0: Make sure the current log file is inserted (and get its ID)
-	mctx.logfileID, err = InsertLogfile(sqlDb, ctx.Ln)
+	pctx.logfileID, err = InsertLogfile(sqlDb, ctx.Ln)
 	if err != nil {
 		return fmt.Errorf("megaFeatures.DumpToMongresql/logFile: %w", err)
 	}
 
 	// Step 1: import the new script-body-hashes and build a hash->ID mapping for subsequent phases
-	if err = mctx.sqlDumpScriptHashes(sqlDb, ctx.Ln); err != nil {
+	if err = pctx.sqlDumpScriptHashes(sqlDb, ctx.Ln); err != nil {
 		return fmt.Errorf("megaFeatures.DumpToMongresql/scriptHashes: %w", err)
 	}
 
 	// Step 2: import all loaded-instances of the scripts and build a scriptInfo->ID mapping for subsequent phases
-	if err = mctx.sqlDumpScriptInstances(sqlDb, ctx.Ln); err != nil {
+	if err = pctx.sqlDumpScriptInstances(sqlDb, ctx.Ln); err != nil {
 		return fmt.Errorf("megaFeatures.DumpToMongresql/scriptInstances: %w", err)
 	}
 
 	// Step 3: import the new distinct feature names (and metadata) and build a name->ID mapping for subsequent phases
-	if err = mctx.sqlDumpDistinctFeatures(sqlDb, agg); err != nil {
+	if err = pctx.sqlDumpDistinctFeatures(sqlDb, agg); err != nil {
 		return fmt.Errorf("megaFeatures.DumpToMongresql/distinctFeatures: %w", err)
 	}
 
 	// Step 4: import the aggregated usage counts (referencing features and instances/scripts)
-	if err = mctx.sqlDumpUsageCounts(sqlDb, agg); err != nil {
+	if err = pctx.sqlDumpUsageCounts(sqlDb, agg); err != nil {
 		return fmt.Errorf("megaFeatures.DumpToMongresql/usageCounts: %w", err)
 	}
-
-	core.MarkVV8LogComplete(mongoDb, ctx.Ln.ID, "Mfeatures")
 	return nil
 }
 
@@ -70,7 +67,7 @@ var scriptHashImportFields = [...]string{
 	"size",
 }
 
-func (mctx *mongresqlContext) sqlDumpScriptHashes(sqlDb *sql.DB, ln *core.LogInfo) error {
+func (pctx *postgresqlContext) sqlDumpScriptHashes(sqlDb *sql.DB, ln *core.LogInfo) error {
 	// Step 1a: compute/bulk-insert the set of distinct script [hashes] loaded into an import table
 	//---------------------------------------------------------------------------------------------
 	log.Printf("Mfeatures.sqlDumpScriptHashes: creating temp table 'import_scripts'...")
@@ -85,18 +82,18 @@ func (mctx *mongresqlContext) sqlDumpScriptHashes(sqlDb *sql.DB, ln *core.LogInf
 		}
 	}()
 
-	log.Printf("Mfeatures.sqlDumpScriptHashes: computing set of distinct script-hashes encountered in logfileID=%d\n...", mctx.logfileID)
-	if mctx.hashMap == nil {
-		mctx.hashMap = make(scriptHashIDMap)
+	log.Printf("Mfeatures.sqlDumpScriptHashes: computing set of distinct script-hashes encountered in logfileID=%d\n...", pctx.logfileID)
+	if pctx.hashMap == nil {
+		pctx.hashMap = make(scriptHashIDMap)
 	}
 	for _, iso := range ln.Isolates {
 		for _, script := range iso.Scripts {
-			mctx.hashMap[script.CodeHash] = 0 // placeholder: later to be replaced by Postgres FK ID
+			pctx.hashMap[script.CodeHash] = 0 // placeholder: later to be replaced by Postgres FK ID
 		}
 	}
 	hashChan := make(chan core.ScriptHash)
 	go func() {
-		for shash := range mctx.hashMap {
+		for shash := range pctx.hashMap {
 			hashChan <- shash
 		}
 		close(hashChan)
@@ -168,10 +165,10 @@ ON CONFLICT DO NOTHING;
 	// Step 1c: lookup permanent IDs of all scripts in the import table before dropping (retain the mapping)
 	//------------------------------------------------------------------------------------------------------
 	lookupRows, err := sqlDb.Query(`
-SELECT id, sha2, sha3, size
-FROM mega_scripts AS ms
-	INNER JOIN import_scripts AS ish USING (sha2, sha3, size)
-`)
+		SELECT id, sha2, sha3, size
+		FROM mega_scripts AS ms
+		INNER JOIN import_scripts AS ish USING (sha2, sha3, size)
+	`)
 	if err != nil {
 		return err
 	}
@@ -184,7 +181,7 @@ FROM mega_scripts AS ms
 		}
 		copy(shash.SHA2[:], sha2Slice)
 		copy(shash.SHA3[:], sha3Slice)
-		mctx.hashMap[shash] = sid
+		pctx.hashMap[shash] = sid
 	}
 
 	return nil
@@ -199,7 +196,7 @@ func hashInstance(ln *core.LogInfo, instance *core.ScriptInfo) (reverseInstanceK
 	stomach := sha256.New()
 
 	things := []interface{}{
-		[]byte(ln.ID),
+		[]byte(ln.ID.String()),
 		instance.CodeHash.SHA2[:],
 		instance.CodeHash.SHA3[:],
 		int64(instance.CodeHash.Length),
@@ -227,7 +224,7 @@ var instanceImportFields = [...]string{
 	"eval_parent_hash",
 }
 
-func (mctx *mongresqlContext) sqlDumpScriptInstances(sqlDb *sql.DB, ln *core.LogInfo) error {
+func (pctx *postgresqlContext) sqlDumpScriptInstances(sqlDb *sql.DB, ln *core.LogInfo) error {
 	// Step 2a: bulk-insert into import table (generating instance-hashes along the way)
 	//----------------------------------------------------------------------------------
 	log.Printf("Mfeatures.sqlDumpScriptInstances: creating temp table 'import_instances'...")
@@ -286,11 +283,11 @@ func (mctx *mongresqlContext) sqlDumpScriptInstances(sqlDb *sql.DB, ln *core.Log
 				temp := ub.URLToHash(script.URL)
 				scriptURLHash = temp[:]
 			}
-			sid := mctx.hashMap[script.CodeHash]
+			sid := pctx.hashMap[script.CodeHash]
 
 			values := []interface{}{
 				instaHash[:],
-				mctx.logfileID,
+				pctx.logfileID,
 				sid,
 				script.Isolate.ID,
 				script.ID,
@@ -346,8 +343,8 @@ FROM mega_instances AS mi
 	if err != nil {
 		return err
 	}
-	if mctx.instanceMap == nil {
-		mctx.instanceMap = make(instanceMetaMap)
+	if pctx.instanceMap == nil {
+		pctx.instanceMap = make(instanceMetaMap)
 	}
 	for lookupRows.Next() {
 		var instanceID int
@@ -358,7 +355,7 @@ FROM mega_instances AS mi
 		var hashArray reverseInstanceKey
 		copy(hashArray[:], hashSlice)
 		instance := rimap[hashArray]
-		mctx.instanceMap[instance] = instanceID
+		pctx.instanceMap[instance] = instanceID
 	}
 	if err = lookupRows.Err(); err != nil {
 		return err
@@ -376,7 +373,7 @@ var featureImportFields = [...]string{
 	"idl_member_role",
 }
 
-func (mctx *mongresqlContext) sqlDumpDistinctFeatures(sqlDb *sql.DB, agg *usageAggregator) error {
+func (pctx *postgresqlContext) sqlDumpDistinctFeatures(sqlDb *sql.DB, agg *usageAggregator) error {
 	// Step 3a: bulk-insert the set of distinct feature [names] observed
 	//------------------------------------------------------------------
 	log.Printf("Mfeatures.sqlDumpDistinctFeatures: creating temp table 'import_features'...")
@@ -481,8 +478,8 @@ FROM mega_features AS mf
 	if err != nil {
 		return err
 	}
-	if mctx.featureMap == nil {
-		mctx.featureMap = make(featureNameMap)
+	if pctx.featureMap == nil {
+		pctx.featureMap = make(featureNameMap)
 	}
 	for lookupRows.Next() {
 		var fid int
@@ -490,7 +487,7 @@ FROM mega_features AS mf
 		if err = lookupRows.Scan(&fid, &name); err != nil {
 			return err
 		}
-		mctx.featureMap[name] = fid
+		pctx.featureMap[name] = fid
 	}
 	return nil
 }
@@ -504,7 +501,7 @@ var usageImportFields = [...]string{
 	"usage_count",
 }
 
-func (mctx *mongresqlContext) sqlDumpUsageCounts(sqlDb *sql.DB, agg *usageAggregator) error {
+func (pctx *postgresqlContext) sqlDumpUsageCounts(sqlDb *sql.DB, agg *usageAggregator) error {
 	// Step 4a. Insert raw tuples (with URL hashes) into temp import table
 	log.Printf("Mfeatures.sqlDumpUsageCounts: creating temp table 'import_usages'...")
 	if err := core.CreateImportTable(sqlDb, "mega_usages_import_schema", "import_usages"); err != nil {
@@ -535,8 +532,8 @@ func (mctx *mongresqlContext) sqlDumpUsageCounts(sqlDb *sql.DB, agg *usageAggreg
 				return nil, nil // end-of-stream
 			}
 
-			instanceID := mctx.instanceMap[usage.script]
-			featureID := mctx.featureMap[usage.feature.fullName]
+			instanceID := pctx.instanceMap[usage.script]
+			featureID := pctx.featureMap[usage.feature.fullName]
 			originURLHash := ub.URLToHash(usage.origin)
 			values := []interface{}{
 				instanceID,
