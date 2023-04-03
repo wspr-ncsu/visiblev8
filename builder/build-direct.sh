@@ -129,7 +129,8 @@ gn gen out/Release
 cd $WD/src/v8
 echo "Using $LAST_PATCH_FILE to patch V8"
 # "Run `docker commit $(docker ps -q -l) patch-failed` to analyze the failed patches."
-patch -p1 <$LAST_PATCH_FILE 
+patch -p1 <$LAST_PATCH_FILE || { echo "Patching Chromium $VERSION with $LAST_PATCH_FILE failed. Exiting!" ; exit 42; }
+
 cd $WD/src
 
 # building
