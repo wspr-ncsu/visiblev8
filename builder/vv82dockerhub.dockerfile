@@ -8,6 +8,7 @@ ARG RUN_USER=node
 RUN mkdir -p /artifacts
 COPY $ARTIFACT_DIR/${VERSION}/*.deb /artifacts
 COPY $ARTIFACT_DIR/${VERSION}/*.pickle /artifacts
+COPY $ARTIFACT_DIR/${VERSION}/*.json /artifacts
 
 RUN dpkg -i "/artifacts/$PACKAGE_NAME" || true
 RUN apt update && apt install -f --no-install-recommends --yes
