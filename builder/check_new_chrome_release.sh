@@ -22,7 +22,7 @@ if [ "$LAST_RELEASE" == "$VERSION" ]; then
 else
     echo "New release is available"
     echo "Building VisibleV8 for $VERSION"
-    make build VERSION=$VERSION DEBUG=0 PUBLISH_ASSETS=1 TESTS=0
+    make build VERSION=$VERSION DEBUG=0 PUBLISH_ASSETS=1 TESTS=1
     if [ $? -eq 0 ]; then
         echo "Done building VisibleV8 for $VERSION"
         curl -X POST -H 'Content-type: application/json' --data '{"text":"VisibleV8 build for version '$VERSION' has been successful!"}' $SLACK_WEBHOOK
