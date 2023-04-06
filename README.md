@@ -36,7 +36,7 @@ Alternatively, you can download Debian packages from the [releases](https://gith
 * Clone this repository *(we will call the cloned working directory **$VV8**)*
 * Run `make build` from *inside* `$VV8/builder`, this will build the latest Chromium version with the VisibleV8 patches. You can also run `make build VERSION=104.0.5112.79` to build a specific version of Chromium, but keep in mind that we do not have patchsets for all versions of Chromium.
 * You can find the `.deb` file inside `$VV8/builder/artifacts` and install it using `dpkg -i <path-to-deb-file>`
-
+* (Optional) If you want to verify that VisibleV8 is producing logs as intended, you can run a set of regression tests using `../tests/run.sh -x $(docker ps -q -l --format={{.Image}}) trace-apis-obj`. The output will verify the output of the v8-shell against a set of pre-generated logs looking for differences between the logs.
 
 ## Log Output
 

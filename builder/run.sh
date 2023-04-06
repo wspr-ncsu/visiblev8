@@ -21,8 +21,8 @@ if [[ "$PUBLISH_ASSETS" -eq 1 ]]; then
 fi
 
 if [[ "$TESTS" -eq 1 ]]; then
-    LATEST_IMAGE=`docker images --format='{{.ID}}' | head -1`
-    ../tests/run.sh $LATEST_IMAGE trace-apis
+    LATEST_IMAGE=`docker ps -l --format={{.Image}}`
+    ../tests/run.sh -x $LATEST_IMAGE trace-apis-obj
 fi
 
 # docker run -it --privileged --entrypoint /bin/bash -v $(pwd):/tests --user 0 visiblev8/vv8-base:104.0.5112.79

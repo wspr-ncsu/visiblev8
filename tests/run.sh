@@ -20,6 +20,7 @@ if [ -z "$IMAGE" -o -z "$SUITE" ]; then
 fi
 
 TEST_ROOT=$(realpath $(dirname $0))
+ARTIFACTS_DIR="$TEST_ROOT/../builder/artifacts"
 SRC_DIR="$TEST_ROOT/src"
 TOOLS_DIR="$TEST_ROOT/logs"
 SUITE_DIR="$TEST_ROOT/logs/$SUITE"
@@ -29,6 +30,7 @@ if [ ! -d "$SUITE_DIR" ]; then
 fi
 
 docker run $PRIV --rm \
+    -v "$ARTIFACTS_DIR:/artifacts:rw" \
     -v "$SRC_DIR:/testsrc:ro" \
     -v "$TOOLS_DIR:/tools:ro" \
     -v "$SUITE_DIR:/expected:ro" \
