@@ -23,6 +23,7 @@ import (
 	"github.ncsu.edu/jjuecks/vv8-post-processor/core"
 	"github.ncsu.edu/jjuecks/vv8-post-processor/elements"
 	"github.ncsu.edu/jjuecks/vv8-post-processor/features"
+	"github.ncsu.edu/jjuecks/vv8-post-processor/flow"
 	"github.ncsu.edu/jjuecks/vv8-post-processor/mega"
 	"github.ncsu.edu/jjuecks/vv8-post-processor/micro"
 )
@@ -57,6 +58,7 @@ var acceptedOutputFormats = map[string]formatAggregator{
 	"causality_graphml": {"ScriptCausality", causality.NewScriptCausalityAggregator},
 	"create_element":    {"CreateElement", elements.NewCreateElementAggregator},
 	"ufeatures":         {"MicroFeatureUsage", micro.NewFeatureUsageAggregator},
+	"flow":              {"flow", flow.NewAggregator},
 	"noop":              {"Noop", nullCtor},
 }
 
@@ -234,7 +236,6 @@ func invoke(args []string, topLevel bool) error {
 				segmentStreams[i] = core.NewClosingReader(file)
 			}
 			inputStream = io.MultiReader(segmentStreams...)
-			fmt.Printf("%s", aggCtx.LogOid)
 			aggCtx.RootName = inputName
 		} else {
 			return fmt.Errorf("something is very wrong--where are the file names?")

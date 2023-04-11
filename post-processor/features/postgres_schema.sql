@@ -18,6 +18,17 @@ CREATE TABLE IF NOT EXISTS script_blobs (
 	size INT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS script_flow (
+	id INT PRIMARY KEY NOT NULL,
+	isolate TEXT NOT NULL,
+	visiblev8 BOOLEAN NOT NULL,
+	code TEXT NOT NULL,
+	first_origin TEXT,
+	url TEXT,
+	apis TEXT[],
+	evaled_by INT -- REFERENCES script_flow (id)
+);
+
 CREATE TABLE IF NOT EXISTS js_api_features_summary (
 	logfile_id INT REFERENCES logfile (id) NOT NULL,
 	all_features JSON NOT NULL
