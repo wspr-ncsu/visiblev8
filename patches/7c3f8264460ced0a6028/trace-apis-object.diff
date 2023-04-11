@@ -66,6 +66,61 @@ index 86b1eba6bf..6b72304f2c 100644
    if (new_target->IsJSReceiver()) {
      RETURN_RESULT_OR_FAILURE(
          isolate, HandleApiCallHelper<true>(isolate, new_target, fun_data,
+diff --git a/src/builtins/builtins-function.cc b/src/builtins/builtins-function.cc
+index 84856beba8..ac009cbe86 100644
+--- a/src/builtins/builtins-function.cc
++++ b/src/builtins/builtins-function.cc
+@@ -17,6 +17,11 @@
+ namespace v8 {
+ namespace internal {
+ 
++// VisibleV8
++extern void visv8_log_api_call(Isolate*, bool, HeapObject, Object,
++                               Address*, int);
++// VisibleV8
++
+ namespace {
+ 
+ // ES6 section 19.2.1.1.1 CreateDynamicFunction
+@@ -27,6 +32,10 @@ MaybeHandle<Object> CreateDynamicFunction(Isolate* isolate,
+   DCHECK_LE(1, args.length());
+   int const argc = args.length() - 1;
+ 
++  // VisibleV8
++  // passing undefined into the reciever since no reciever exists
++  visv8_log_api_call(isolate, false, *args.target(), ReadOnlyRoots(isolate).undefined_value(), args.address_of_first_argument(), argc);
++  // VisibleV8
+   Handle<JSFunction> target = args.target();
+   Handle<JSObject> target_global_proxy(target->global_proxy(), isolate);
+ 
+diff --git a/src/builtins/builtins-global.cc b/src/builtins/builtins-global.cc
+index 137f7f3402..c6fe9ac33c 100644
+--- a/src/builtins/builtins-global.cc
++++ b/src/builtins/builtins-global.cc
+@@ -13,6 +13,11 @@
+ namespace v8 {
+ namespace internal {
+ 
++// VisibleV8
++extern void visv8_log_api_call(Isolate*, bool, HeapObject, Object,
++                               Address*, int);
++//VisibleV8
++
+ // ES6 section 18.2.6.2 decodeURI (encodedURI)
+ BUILTIN(GlobalDecodeURI) {
+   HandleScope scope(isolate);
+@@ -86,6 +91,11 @@ BUILTIN(GlobalEval) {
+   Handle<Object> x = args.atOrUndefined(isolate, 1);
+   Handle<JSFunction> target = args.target();
+   Handle<JSObject> target_global_proxy(target->global_proxy(), isolate);
++
++  // VisibleV8
++  v8::internal::visv8_log_api_call(isolate, false, *target, *args.receiver(), args.address_of_first_argument(), args.length() - 1);
++  // VisibleV8
++
+   if (!Builtins::AllowDynamicFunction(isolate, target, target_global_proxy)) {
+     isolate->CountUsage(v8::Isolate::kFunctionConstructorReturnedUndefined);
+     return ReadOnlyRoots(isolate).undefined_value();
 diff --git a/src/builtins/builtins-reflect.cc b/src/builtins/builtins-reflect.cc
 index 7f5b2095bf..9740fe58fc 100644
 --- a/src/builtins/builtins-reflect.cc
@@ -510,6 +565,34 @@ index e8bb3c2bc3..f05d9c89e9 100644
    // Store the value.
    builder()->SetExpressionPosition(expr);
    switch (assign_type) {
+diff --git a/src/runtime/runtime-compiler.cc b/src/runtime/runtime-compiler.cc
+index 02e1d002fe..2e0a0c46b1 100644
+--- a/src/runtime/runtime-compiler.cc
++++ b/src/runtime/runtime-compiler.cc
+@@ -18,7 +18,10 @@
+ 
+ namespace v8 {
+ namespace internal {
+-
++// VisibleV8
++extern void visv8_log_api_call(Isolate*, bool, HeapObject, Object,
++                               Address*, int);
++// VisibleV8
+ namespace {
+ void LogExecution(Isolate* isolate, Handle<JSFunction> function) {
+   DCHECK(v8_flags.log_function_events);
+@@ -646,6 +649,11 @@ RUNTIME_FUNCTION(Runtime_ResolvePossiblyDirectEval) {
+     return *callee;
+   }
+ 
++  // VisibleV8
++  // passing undefined into the reciever since no reciever exists
++  visv8_log_api_call(isolate, false, *args.at<HeapObject>(0), ReadOnlyRoots(isolate).undefined_value(), args.address_of_arg_at(1), 1);
++  // VisibleV8
++
+   DCHECK(is_valid_language_mode(args.smi_value_at(3)));
+   LanguageMode language_mode = static_cast<LanguageMode>(args.smi_value_at(3));
+   Handle<SharedFunctionInfo> outer_info(args.at<JSFunction>(2)->shared(),
 diff --git a/src/runtime/runtime-test.cc b/src/runtime/runtime-test.cc
 index 5560d24052..237a78df6b 100644
 --- a/src/runtime/runtime-test.cc
