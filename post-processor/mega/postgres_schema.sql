@@ -33,7 +33,8 @@ CREATE TABLE IF NOT EXISTS mega_logfile (
     root_name TEXT NOT NULL,            -- Root name of log file as originally stored (prefix of all segment names)
     size BIGINT NOT NULL,               -- Aggregate size (bytes) of all log segments processed
     lines INT NOT NULL,                 -- Aggregate size (lines) of all log segments processed
-    page_oid BYTEA                      -- Associate page Mongo OID (IF KNOWN)
+    page_oid BYTEA,                     -- Associate page Mongo OID (IF KNOWN)
+    submission_id TEXT                  -- Associate submission ID (IF KNOWN)
 );
 
 -- Record of each distinct script body loaded
