@@ -9,14 +9,15 @@ import (
 // InsertLogfile inserts (if not present) a record about this log file into PG
 func InsertLogfile(sqldb *sql.DB, ln *core.LogInfo) (int, error) {
 	_, err := sqldb.Exec(`
-INSERT INTO mega_logfile (mongo_oid, uuid, root_name, size, lines)
-	VALUES ($1, $2, $3, $4, $5)
+INSERT INTO mega_logfile (mongo_oid, uuid, root_name, size, lines, submission_id)
+	VALUES ($1, $2, $3, $4, $5, $6)
 ON CONFLICT DO NOTHING`,
 		ln.MongoID.String(),
 		ln.ID,
 		ln.RootName,
 		ln.Stats.Bytes,
 		ln.Stats.Lines,
+		ln.SubmissionID,
 	)
 	if err != nil {
 		return 0, err
