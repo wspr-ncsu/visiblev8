@@ -599,7 +599,7 @@ index 376d04aa3e..33223a1200 100644
    LanguageMode language_mode = static_cast<LanguageMode>(args.smi_value_at(3));
    Handle<SharedFunctionInfo> outer_info(args.at<JSFunction>(2)->shared(),
 diff --git a/src/runtime/runtime-test.cc b/src/runtime/runtime-test.cc
-index d9ce23647d..4b99cf27e5 100644
+index d9ce23647d..8f3cd1b259 100644
 --- a/src/runtime/runtime-test.cc
 +++ b/src/runtime/runtime-test.cc
 @@ -2,15 +2,24 @@
@@ -753,9 +753,10 @@ index d9ce23647d..4b99cf27e5 100644
 +      out << '/';
 +    } else if (obj.IsJSReceiver()) {
 +      Handle<JSReceiver> rcvr = handle(JSReceiver::cast(obj), isolate);
++      Handle<String> ctor = JSReceiver::GetConstructorName(isolate, rcvr);
 +      out << '{';
 +      out << rcvr->GetOrCreateIdentityHash(isolate).value();
-+      if (iter_obj) {
++      if (iter_obj && (strcmp(ctor->ToCString().get(), "Object") == 0 || strcmp(ctor->ToCString().get(), "Array") == 0)) {
 +        // We are encountering this object for the first time, iterate it!
 +        Handle<FixedArray> contents;
 +        do {
@@ -788,7 +789,6 @@ index d9ce23647d..4b99cf27e5 100644
 +      } else {
 +        // We are inside a nested object, do not go deeper!
 +        out << ',';
-+        Handle<String> ctor = JSReceiver::GetConstructorName(isolate, rcvr);
 +        myPrintUC16(*ctor, out, 0, max_len);
 +      }
 +      out << '}';
