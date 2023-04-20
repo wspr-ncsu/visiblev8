@@ -62,8 +62,9 @@ def relabel_volatile_log_fields(stream):
 
     def relabel_obj_field(field):
         if "," in field:
-            obj_id, recv = field[1 : len(field) - 1].split(",")
-            return "{{{0},{1}}}".format(relabel_obj(obj_id), recv)
+            obj_id = field[1 : len(field) - 1].split(",")[0]
+            recv = field[1 : len(field) - 1].split(",")[1:]
+            return "{{{0},{1}}}".format(relabel_obj(obj_id), ''.join(recv))
         return field
 
     for line in stream:
@@ -86,8 +87,8 @@ def relabel_volatile_log_fields(stream):
             else:
                 # Either a call/get/set operation
                 # Do we have object ID tagging?
-                fields[1] = relabel_obj_field(fields[1])
-                fields[2] = relabel_obj_field(fields[2])
+                for i in range(0,len(fields)):
+                    fields[i] = relabel_obj_field(fields[i])
 
             # Repack and emit the relabeled line
             yield line[0] + vlp.pack_raw_fields(fields)

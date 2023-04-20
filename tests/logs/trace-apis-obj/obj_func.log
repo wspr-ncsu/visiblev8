@@ -1,0 +1,5 @@
+~0x559ee2778200
+@?
+$3:"/testsrc/obj_func.js":const a = [1,2,3,4,5];\x0aconst b = { 'a'\: 1, 'b'\: 2, 'c'\: 3, 'd'\: 4, 'e'\: 5 };\x0afunction A() {\x0a    this.a = 1;\x0a}\x0aA.prototype.doSomething = function () {\x0a    this.a += 1;\x0a}\x0aconst c = new A();\x0aprint(a,b,c)
+!3
+c188:%print:{769589,global}:{723511,0\:1,1\:2,2\:3,3\:4,4\:5}:{387,a\:1,b\:2,c\:3,d\:4,e\:5}:{295930,A}
