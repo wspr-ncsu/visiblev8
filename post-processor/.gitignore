@@ -8,3 +8,4 @@ vv8-post-processor
 .vscode
 .env
 .samples
+artifacts/

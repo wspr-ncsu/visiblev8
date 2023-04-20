@@ -146,10 +146,6 @@ func (agg *flowAggregator) DumpToPostgresql(ctx *core.AggregationContext, sqlDb 
 
 	}
 
-	_, err = stmt.Exec()
-	if err != nil {
-		txn.Rollback()
-	}
 	err = stmt.Close()
 	if err != nil {
 		txn.Rollback()
