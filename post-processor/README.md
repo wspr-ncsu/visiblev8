@@ -7,7 +7,14 @@ Originally tightly integrated to a single workflow (i.e., many assumptions/depen
 
 ## Building
 
-Use a modern [Go](https://golang.org/) toolchain (e.g., 1.13 or newer).  Get the code (`git clone` or unZIP).  Run `go build` inside the project root.  The resulting `vv8-post-processor` binary is all you need (though some of the runtime modes require `idldata.json` as well).
+To build the vv8-postprocessors, you need to have the following programs/languages installed:
+
+* `python3` (Preferably > 3.8)
+* `Rust` (The project was tested using the 2021 edition)
+* `Go` (Any version > 1.13 should be sufficient to build vv8-postprocessors)
+* `make`
+
+Once the programs are installed you can build the postprocessors by using the `make` command. A resulting `artifacts/` folder is created which contains all the necessary binaries for running the postprocessors.
 
 ## Quick Start
 
@@ -45,3 +52,18 @@ That said, a subsequent PostgreSQL-based workflow (via the `Mfeatures` aggregato
 * `causality`/`causality_graphml` **(broken)**: 2 different output modes for a single input-processing pass that uses a bunch of heuristics to try to reconstruct script provenance (what script loaded what other script); the later mode emits GraphML (i.e., XML)
 * `ufeatures`: a nice summary of features-touched globally on a per logfile basis
 * `Mfeatures`: the latest and probably best/richest aggregation of data into a fairly normalized entity-relationship schema of script/instance/feature/usage; requires PostgreSQL (see `mega/postgres_schema.sql`)
+* `adblock`: A aggregator which logs which url and origin combinations are blocked by easyprivacy.txt and easylist.txt. We use a the brave adblock engine implementation in Rust.
+
+> **Note**
+> To use the `adblock` postprocessor you need to have the `adblock` binary and the easyprivacy.txt and easylist.txt files in the current working directory or set the following variables to the path of thier respective locations.
+>
+> * `ADBLOCK_BINARY`
+> * `EASYLIST_FILE`
+> * `EASYPRIVACY_FILE`
+
+* `fptp`: This postprocessor logs each and every script and whether or not they are a third party compared to:
+  * The origin in which they were loaded
+  * If available via the `submission id`, the root domain in which they were loaded
+
+> **Note**
+> To use the `fptp` postprocessor you need to have the `entities.json` file (generated as part of the build process) in the current working directory or set the `EMAP_FILE` variable to the path of the file.
