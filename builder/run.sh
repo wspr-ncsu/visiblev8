@@ -15,14 +15,18 @@ docker run --platform linux/amd64 -v $(pwd)/artifacts:/artifacts -v $(pwd)/build
 PACKAGE_NAME=`find ./artifacts -name '*.deb' -printf "%f\n" | sort -V | tail -n 1`
 VERSION=`echo $PACKAGE_NAME | grep -o -E '[0-9]*\.[0-9]*\.[0-9]*\.[0-9]*'`
 
-if [[ "$PUBLISH_ASSETS" -eq 1 ]]; then
-    ./vv82dockerhub.sh $VERSION $PACKAGE_NAME
-    ./github_release.sh $VERSION
-fi
-
+## Run tests before publishing, if we fail we don't upload
 if [[ "$TESTS" -eq 1 ]]; then
     LATEST_IMAGE=`docker ps -l --format={{.Image}}`
     ../tests/run.sh -x $LATEST_IMAGE trace-apis-obj
+fi
+
+
+if [[ "$PUBLISH_ASSETS" -eq 1 ]]; then
+    ./vv82dockerhub.sh $VERSION $PACKAGE_NAME
+    ./github_release.sh $VERSION
+    # Publish a docker container containing the postprocessors
+    make -C ../post-processor publish
 fi
 
 # docker run -it --privileged --entrypoint /bin/bash -v $(pwd):/tests --user 0 visiblev8/vv8-base:104.0.5112.79
