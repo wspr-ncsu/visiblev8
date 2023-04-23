@@ -1,4 +1,4 @@
-PHONY: rust-build go-build fetch-easy-privacy
+PHONY: rust-build go-build fetch-easy-privacy build_entity_hashmap
 
 rust-build:
 	mkdir -p ./artifacts
@@ -12,6 +12,9 @@ go-build:
 
 fetch-easy-privacy:
 	./fetch_easy_privacy.sh
+
+build_entity_hashmap:
+	./build_entity_hashmap.sh
 
 run:
 	./artifacts/vv8-post-processor

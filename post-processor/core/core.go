@@ -150,7 +150,7 @@ func (ln *LogInfo) addScript(id int, src string, code string) *ScriptInfo {
 		script.setURL(src)
 
 		// Special case: is this a visible-v8:// script? (or a puppeteer-eval'd script?)
-		if strings.HasSuffix(code, "//# sourceURL=__puppeteer_evaluation_script__\n)") {
+		if strings.HasSuffix(code, "//# sourceURL=__puppeteer_evaluation_script__\n)") || len(src) == 0 {
 			script.VisibleV8 = true
 		}
 	} else {
