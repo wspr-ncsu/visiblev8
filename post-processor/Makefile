@@ -1,5 +1,8 @@
 PHONY: rust-build go-build fetch-easy-privacy build_entity_hashmap
 
+docker:
+	./build/docker.sh
+
 rust-build:
 	mkdir -p ./artifacts
 	cd ./adblock/adblock-oracle-rs && cargo build --release
@@ -10,14 +13,14 @@ go-build:
 	go build .
 	cp ./vv8-post-processor ./artifacts/vv8-post-processor
 
+publish:
+	./build/publish.sh
+
 fetch-easy-privacy:
-	./fetch_easy_privacy.sh
+	./build/fetch_easy_privacy.sh
 
 build_entity_hashmap:
-	./build_entity_hashmap.sh
-
-run:
-	./artifacts/vv8-post-processor
+	./build/entity_hashmap.sh
 
 clean:
 	rm -rf ./artifacts

@@ -1,4 +1,5 @@
 #!/bin/sh
+set -ex
 if [ ! -f "./artifacts/easylist.txt" ]; then
   curl https://easylist.to/easylist/easylist.txt -o ./artifacts/easylist.txt
 fi
