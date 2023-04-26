@@ -96,7 +96,6 @@ func (agg *flowAggregator) IngestRecord(ctx *core.ExecutionContext, lineNumber i
 }
 
 var scriptFlowFields = [...]string{
-	"id",
 	"isolate",
 	"visiblev8",
 	"code",
@@ -130,7 +129,6 @@ func (agg *flowAggregator) DumpToPostgresql(ctx *core.AggregationContext, sqlDb 
 		}
 
 		_, err = stmt.Exec(
-			script.info.ID,
 			script.info.Isolate.ID,
 			script.info.VisibleV8,
 			script.info.Code,
