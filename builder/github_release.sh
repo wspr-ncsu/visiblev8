@@ -3,9 +3,11 @@ source .env
 
 # Set variables
 REPO="wspr-ncsu/visiblev8"
-TAG="$1"
-NAME="visiblev8-$TAG"
-BODY="This is the release for VisibleV8 based on Chromium $TAG."
+GIT_COMMIT=$(git rev-parse --short HEAD)
+# visiblev8_ab475ac-112.0.5615.165
+TAG="visiblev8_$GIT_COMMIT-$1"
+NAME="visiblev8_$GIT_COMMIT-$1"
+BODY="This is the release for VisibleV8 commit $GIT_COMMIT based on Chromium $1."
 FILE="$1"
 
 cd artifacts

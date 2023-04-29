@@ -1,6 +1,10 @@
 #!/bin/bash
 source .env
 
+GIT_COMMIT=$(git rev-parse --short HEAD)
+echo "==============================="
+echo "$(date) Checking if we need to build VisibleV8 for commit $GIT_COMMIT"
+
 RELEASES=$(curl -s -L \
   -H "Accept: application/vnd.github+json" \
   -H "Authorization: Bearer $GITHUB_TOKEN"\
@@ -17,7 +21,7 @@ get_latest_stable_version() {
 VERSION="$(get_latest_stable_version)"
 echo "Latest Chrome stable version is:  $VERSION"
 
-if [ "$LAST_RELEASE" == "$VERSION" ]; then
+if [ "$LAST_RELEASE" == "visiblev8_$GIT_COMMIT-$VERSION" ]; then
     echo "Latest release is already up to date"
 else
     echo "New release is available"
@@ -25,10 +29,10 @@ else
     make build VERSION=$VERSION DEBUG=0 PUBLISH_ASSETS=1 TESTS=1
     if [ $? -eq 0 ]; then
         echo "Done building VisibleV8 for $VERSION"
-        curl -X POST -H 'Content-type: application/json' --data '{"text":"VisibleV8 build for version '$VERSION' has been successful!"}' $SLACK_WEBHOOK
+        curl -X POST -H 'Content-type: application/json' --data '{"text":"VisibleV8 build '$GIT_COMMIT' for Chromium version '$VERSION' has been successful!"}' $SLACK_WEBHOOK
     else
         echo "Failed to build VisibleV8 for $VERSION"
-        curl -X POST -H 'Content-type: application/json' --data '{"text":"VisibleV8 build for version '$VERSION' failed. Check the latest logs for errors."}' $SLACK_WEBHOOK
+        curl -X POST -H 'Content-type: application/json' --data '{"text":"VisibleV8 build '$GIT_COMMIT' for Chromium version '$VERSION' failed. Check the latest logs for errors."}' $SLACK_WEBHOOK
     fi
     echo "Done building VisibleV8 for $VERSION"
 fi

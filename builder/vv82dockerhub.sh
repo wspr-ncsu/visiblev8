@@ -4,8 +4,9 @@ source .env
 ARTIFACT_DIR="./artifacts"
 VERSION=${1:-""}
 PACKAGE_NAME=${2:-""}
+GIT_COMMIT=$(git rev-parse --short HEAD)
 
-TARGET_IMAGE="visiblev8/vv8-base:$VERSION"
+TARGET_IMAGE="visiblev8/vv8-base:${GIT_COMMIT}_${VERSION}"
 
 # login to docker hub
 echo $DOCKERHUB_PASSWORD | docker login --username visiblev8 --password-stdin
