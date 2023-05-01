@@ -282,6 +282,7 @@ func invoke(args []string, topLevel bool) error {
 		}
 
 		for _, agg := range aggregators {
+			log.Printf("Started dumping for aggregator...\n")
 			err = outputDriver(agg, &aggCtx)
 			if err != nil {
 				return err
