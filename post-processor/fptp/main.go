@@ -69,6 +69,7 @@ var firstPartyThirdPartyFields = [...]string{
 }
 
 func (agg *fptpAggregator) DumpToPostgresql(ctx *core.AggregationContext, sqlDb *sql.DB) error {
+	log.Printf("Dumping fptp to Postgresql...")
 	var rootDomain string
 	rootDomain, err := core.GetRootDomain(sqlDb, ctx.Ln)
 

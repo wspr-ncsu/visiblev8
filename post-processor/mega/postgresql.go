@@ -58,6 +58,7 @@ func (agg *usageAggregator) DumpToPostgresql(ctx *core.AggregationContext, sqlDb
 	if err = pctx.sqlDumpUsageCounts(sqlDb, agg); err != nil {
 		return fmt.Errorf("megaFeatures.DumpToMongresql/usageCounts: %w", err)
 	}
+	log.Printf("Mfeatures.DumpToMongresql: done.")
 	return nil
 }
 

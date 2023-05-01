@@ -1,7 +1,7 @@
 use adblock::engine::Engine;
 use adblock::lists::ParseOptions;
 use std::io::{self, BufRead, BufReader};
-use std::io::{stdin};
+use std::path::Path;
 use serde_json::{Value};
 use std::fs::File;
 use std::env;
@@ -22,16 +22,25 @@ fn construct_engine() -> io::Result<Engine> {
     Ok(engine)
 }
 
+fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
+where P: AsRef<Path>, {
+    let file = File::open(filename)?;
+    Ok(io::BufReader::new(file).lines())
+}
+
 fn main() {
+    let second_arg = env::args().nth(1).expect("no second arg");
     let engine = construct_engine().unwrap();
-    for line in stdin().lock().lines() {
-        let line = line.unwrap();
-        let mut v: Value = serde_json::from_str(&line).unwrap();
-        if engine.check_network_urls(&v["url"].as_str().unwrap(), &v["origin"].as_str().unwrap(), "script").matched {
-            v["blocked"] = true.into()
-        } else {
-            v["blocked"] = false.into()
+    if let Ok(lines) = read_lines(second_arg) {
+        for line in lines {
+            let line = line.unwrap();
+            let mut v: Value = serde_json::from_str(&line).unwrap();
+            if engine.check_network_urls(&v["url"].as_str().unwrap(), &v["origin"].as_str().unwrap(), "script").matched {
+                v["blocked"] = true.into()
+            } else {
+                v["blocked"] = false.into()
+            }
+            println!("{}",serde_json::to_string(&v).unwrap());
         }
-        println!("{}",serde_json::to_string(&v).unwrap());
     }
 }
