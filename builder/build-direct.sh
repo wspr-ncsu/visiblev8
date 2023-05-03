@@ -134,7 +134,7 @@ patch -p1 <$LAST_PATCH_FILE || { echo "Patching Chromium $VERSION with $LAST_PAT
 cd $WD/src
 
 # building
-autoninja -C out/Release chrome d8 wasm_api_tests cctest inspector-test  v8_mjsunit v8_shell v8/test/unittests icudtl.dat snapshot_blob.bin web_idl_database chrome/installer/linux:stable_deb
+autoninja -C out/Release chrome d8 wasm_api_tests cctest inspector-test v8_unittests v8_mjsunit v8_shell icudtl.dat snapshot_blob.bin web_idl_database chrome/installer/linux:stable_deb
 
 # Build and run V8 tests directly
 # ./v8/tools/dev/gm.py x64.release.check 
@@ -145,7 +145,7 @@ mkdir -p /artifacts/$VERSION/
 cp out/Release/chrome /artifacts/$VERSION/chrome-vv8-$VERSION
 cp out/Release/v8_shell /artifacts/$VERSION/vv8-shell-$VERSION
 cp out/Release/*.deb /artifacts/$VERSION/
-cp -r out/Release/unittests /artifacts/$VERSION/
+cp -r out/Release/v8_unittests /artifacts/$VERSION/
 cp out/Release/icudtl.dat /artifacts/$VERSION/
 cp out/Release/snapshot_blob.bin /artifacts/$VERSION/
 # check here how to use web_idl_database.pickle: https://source.chromium.org/chromium/chromium/src/+/main:third_party/blink/renderer/bindings/scripts/web_idl/README.md
