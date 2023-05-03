@@ -2,6 +2,7 @@
 set -ex
 
 DEBUG=0
+ANDROID=0
 
 get_latest_patch_version() {
     # get the latest patch version available and set LAST_PATCH
@@ -15,13 +16,20 @@ get_latest_patch_version() {
     fi
 }
 
-get_latest_patch_file() {
-    LAST_PATCH_FILE=`grep $LAST_PATCH $VV8/patches/*/version.txt | awk '{print $1}' | sort -V | tail -n 1 | sed "s/:Chrome//" | sed "s/version.txt/trace-apis.diff/"`
+get_latest_v8_patch_file() {
+    LAST_V8_PATCH_FILE=`grep $LAST_PATCH $VV8/patches/*/version.txt | awk '{print $1}' | sort -V | tail -n 1 | sed "s/:Chrome//" | sed "s/version.txt/trace-apis.diff/"`
     #FIXME: this is a hack to get the object patch, we should settle on one patch file moving forward
-    if [ ! -f "$LAST_PATCH_FILE" ]; then
-        LAST_PATCH_FILE=`grep $LAST_PATCH $VV8/patches/*/version.txt | awk '{print $1}' | sort -V | tail -n 1 | sed "s/:Chrome//" | sed "s/version.txt/trace-apis-object.diff/"`
+    if [ ! -f "$LAST_V8_PATCH_FILE" ]; then
+        LAST_V8_PATCH_FILE=`grep $LAST_PATCH $VV8/patches/*/version.txt | awk '{print $1}' | sort -V | tail -n 1 | sed "s/:Chrome//" | sed "s/version.txt/trace-apis-object.diff/"`
     fi
-    if [ ! -f "$LAST_PATCH_FILE" ]; then
+    if [ ! -f "$LAST_V8_PATCH_FILE" ]; then
+        echo "No patch file found for $LAST_PATCH"
+    fi
+}
+
+get_latest_chrome_sandbox_patch_file() {
+    LAST_CHROME_SANDBOX_PATCH_FILE=`grep $LAST_PATCH $VV8/patches/*/version.txt | awk '{print $1}' | sort -V | tail -n 1 | sed "s/:Chrome//" | sed "s/version.txt/chrome-sandbox.diff/"`
+    if [ ! -f "$LAST_CHROME_SANDBOX_PATCH_FILE" ]; then
         echo "No patch file found for $LAST_PATCH"
     fi
 }
@@ -47,6 +55,11 @@ if [[ "$2" -eq 1 ]]; then
     DEBUG=1
 fi
 
+if [[ "$3" -eq 1 ]]; then
+    echo "Android version of VisibleV8 will be built"
+    ANDROID=1
+fi
+
 WD="/tmp/$VERSION"
 DP="$(pwd)/depot_tools"
 
@@ -54,8 +67,11 @@ DP="$(pwd)/depot_tools"
 get_latest_patch_version
 echo $LAST_PATCH;
 
-get_latest_patch_file
-echo $LAST_PATCH_FILE
+get_latest_v8_patch_file
+echo $LAST_V8_PATCH_FILE
+
+get_latest_chrome_sandbox_patch_file
+echo $LAST_CHROME_SANDBOX_PATCH_FILE
 
 # Git tweaks
 git config --global --add safe.directory '*'
@@ -80,9 +96,10 @@ solutions = [
     },
   },
 ]
+target_os = [ 'android' ]
 EOL
 cd $WD/src
-./build/install-build-deps.sh
+./build/install-build-deps.sh --android --no-prompt
 gclient sync -D --force --reset --with_branch_heads # --shallow --no-history
 
 ### Build config
@@ -127,18 +144,16 @@ gn gen out/Release
 
 ### Apply VisibleV8 patches
 cd $WD/src/v8
-echo "Using $LAST_PATCH_FILE to patch V8"
+echo "Using $LAST_V8_PATCH_FILE to patch V8"
 # "Run `docker commit $(docker ps -q -l) patch-failed` to analyze the failed patches."
-patch -p1 <$LAST_PATCH_FILE || { echo "Patching Chromium $VERSION with $LAST_PATCH_FILE failed. Exiting!" ; exit 42; }
+patch -p1 <$LAST_V8_PATCH_FILE || { echo "Patching Chromium $VERSION with $LAST_V8_PATCH_FILE failed. Exiting!" ; exit 42; }
 
 cd $WD/src
-
+echo "Using $LAST_CHROME_SANDBOX_PATCH_FILE to patch Chrome's sandbox"
+# "Run `docker commit $(docker ps -q -l) patch-failed` to analyze the failed patches."
+patch -p1 <$LAST_CHROME_SANDBOX_PATCH_FILE || { echo "Patching Chromium $VERSION with $LAST_CHROME_SANDBOX_PATCH_FILE failed. Exiting!" ; exit 42; }
 # building
 autoninja -C out/Release chrome d8 wasm_api_tests cctest inspector-test v8_unittests v8_mjsunit v8_shell icudtl.dat snapshot_blob.bin web_idl_database chrome/installer/linux:stable_deb
-
-# Build and run V8 tests directly
-# ./v8/tools/dev/gm.py x64.release.check 
-
 
 # copy artifacts
 mkdir -p /artifacts/$VERSION/
@@ -153,9 +168,38 @@ cp out/Release/gen/third_party/blink/renderer/bindings/web_idl_database.pickle /
 # cp out/Release/natives_blob.bin /artifacts/$VERSION/
 chmod +rw -R /artifacts
 
+# Build and run V8 tests directly
+# ./v8/tools/dev/gm.py x64.release.check
+
 # Testing V8
 #TODO: run v8 tests
 # python3 ./v8/tools/run-tests.py --out=../out/Release/ unittests
+
+# Do we build for Android?
+
+if [ "$ANDROID" -eq "1" ]; then
+    [ ! -d $WD/src/out/Android ] && mkdir -p $WD/src/out/Android
+    # production args
+    cat >>out/Android/args.gn <<EOL
+target_os = "android"
+target_cpu = "arm64"
+enable_nacl=false
+dcheck_always_on=false
+is_debug=false
+is_official_build=true
+is_component_build = false
+use_thin_lto=false
+is_cfi=false
+chrome_pgo_phase=0
+v8_use_external_startup_data=true
+EOL
+
+    gn gen out/Android
+
+    autoninja -C out/Android chrome_public_apk
+
+    cp -r out/Android/apks/ChromePublic.apk /artifacts/$VERSION/ChromePublic-vv8-$VERSION.apk
+fi
 
 # Dump IDL data into a JSON file
 # version 98.0.4710.4 is where they appear to have changed to pickle file builds, so check if the version is less than that

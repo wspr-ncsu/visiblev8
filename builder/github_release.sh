@@ -28,7 +28,7 @@ if [ "$UPLOAD_URL" == "null" ]; then
 fi
 
 # Zip the asset file
-tar -czvf $FILE.tar.gz $FILE/*.deb $FILE/*.pickle $FILE/*.json
+tar -czvf $FILE.tar.gz $FILE/*.deb $FILE/*.pickle $FILE/*.json $FILE/*.apk
 
 # Upload the asset file
 curl -X POST \
