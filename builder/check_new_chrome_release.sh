@@ -30,6 +30,9 @@ else
     if [ $? -eq 0 ]; then
         echo "Done building VisibleV8 for $VERSION"
         curl -X POST -H 'Content-type: application/json' --data '{"text":"VisibleV8 build '$GIT_COMMIT' for Chromium version '$VERSION' has been successful!"}' $SLACK_WEBHOOK
+        
+        # cleanup stopped containers to reclaim disk space
+        docker container prune -f
     else
         echo "Failed to build VisibleV8 for $VERSION"
         curl -X POST -H 'Content-type: application/json' --data '{"text":"VisibleV8 build '$GIT_COMMIT' for Chromium version '$VERSION' failed. Check the latest logs for errors."}' $SLACK_WEBHOOK
