@@ -8,3 +8,4 @@ else
 fi
 docker push visiblev8/vv8-postprocessors:$(git rev-parse --short HEAD)
 docker tag visiblev8/vv8-postprocessors:$(git rev-parse --short HEAD) visiblev8/vv8-postprocessors:latest
+docker push visiblev8/vv8-postprocessors:latest
