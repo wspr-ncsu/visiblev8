@@ -113,7 +113,7 @@ func (agg *FeatureUsageAggregator) DumpToStream(ctx *core.AggregationContext, st
 func (agg *FeatureUsageAggregator) DumpToPostgresql(ctx *core.AggregationContext, sqlDb *sql.DB) error {
 	if ctx.Formats["ufeatures"] {
 
-		logID, err := features.InsertLogfile(sqlDb, ctx.Ln)
+		logID, err := ctx.Ln.InsertLogfile(sqlDb)
 		if err != nil {
 			return err
 		}

@@ -312,7 +312,7 @@ func GetRootDomain(db *sql.DB, ln *LogInfo) (string, error) {
 
 	// Get the root domain from the database
 	var rootDomain string
-	err := db.QueryRow("SELECT url FROM vv8_backend.submissions WHERE id = $1", ln.SubmissionID).Scan(&rootDomain)
+	err := db.QueryRow("SELECT url FROM submissions WHERE id = $1", ln.SubmissionID).Scan(&rootDomain)
 
 	if err != nil {
 		return "", err
