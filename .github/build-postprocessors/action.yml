@@ -1,0 +1,5 @@
+name: 'Build postprocessors'
+description: 'Building postprocessors'
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
