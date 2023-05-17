@@ -1,7 +1,7 @@
 on:
   push:
     branches:
-      - 'main'
+      - 'master'
 jobs:
   upload_to_docker:
     name: Push docker image to docker Hub
