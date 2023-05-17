@@ -1,0 +1,45 @@
+on:
+  push:
+    branches:
+      - 'main'
+jobs:
+  upload_to_docker:
+    name: Push docker image to docker Hub
+    runs-on: self-hosted
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v3
+      - name: Use a caching step
+        uses: actions/cache@v3
+        with:
+          path: |
+            ./post-processor/tracker-radar
+          key: ${{ runner.os }}-build-artifacts
+      - name: Build postprocessors
+        uses: ./.github/build-postprocessors
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: visiblev8
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+      - name: Extract short SHA
+        id: short_sha
+        run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: visiblev8/vv8-postprocessors
+          tags: |
+            type=raw,value=latest,enable=true
+            type=raw,value=${{ steps.short_sha.outputs.sha_short }},enable=true
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./post-processor/
+          file: ./post-processor/build/Dockerfile.vv8
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+
