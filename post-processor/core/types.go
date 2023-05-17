@@ -58,6 +58,9 @@ type LogInfo struct {
 	// Any other isolates we know about
 	Isolates map[string]*IsolateInfo
 
+	// Has a entry for this log been added to the database?
+	Tabled bool
+
 	// Statistics on log size
 	Stats struct {
 		Lines int

@@ -48,7 +48,7 @@ That said, a subsequent PostgreSQL-based workflow (via the `Mfeatures` aggregato
 
 * `call_args` **(broken)**: A aggregator that records every call being made and the associated arguments
 * `poly_features/features`/`scripts`/`blobs`: 4 different output modes for a single input-processing pass (the original one, actually) that extracts polymorphic and monomorphic feature sites (locations within scripts that used a given feature and how many times; polymorphic and monomorphic instances kept separate), loaded script hashes and metadata (i.e.,  URL or eval-parent hash), and the full binary dump of loaded scripts
-* `create_element`**(broken)**: emits records of each call to `Document.createElement`, its script context/location, and its first argument (i.e., what kind of element was being created)
+* `create_element`: emits records of each call to `Document.createElement`, its script context/location, and its first argument (i.e., what kind of element was being created)
 * `causality`/`causality_graphml` **(broken)**: 2 different output modes for a single input-processing pass that uses a bunch of heuristics to try to reconstruct script provenance (what script loaded what other script); the later mode emits GraphML (i.e., XML)
 * `ufeatures`: a nice summary of features-touched globally on a per logfile basis
 * `Mfeatures`: the latest and probably best/richest aggregation of data into a fairly normalized entity-relationship schema of script/instance/feature/usage; requires PostgreSQL (see `mega/postgres_schema.sql`)
