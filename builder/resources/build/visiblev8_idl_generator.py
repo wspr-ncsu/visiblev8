@@ -28,11 +28,15 @@ for interface in web_idl_database.interfaces:
     operations = []
     for method in interface.operations:
         operations.append(method.identifier)
+    aliases = []
+    for alias in interface.legacy_window_aliases:
+        aliases.append(alias.identifier)
     idl_data[interface.identifier] = {
         'members': attributes + operations,
         'properties': attributes,
         'methods': operations,
         'parent': interface.inherited.identifier if interface.inherited else None,
+        'aliases': aliases
     }
 
 print(json.dumps(idl_data, indent=2, sort_keys=True))
