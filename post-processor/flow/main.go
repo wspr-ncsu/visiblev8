@@ -11,7 +11,6 @@ import (
 
 	"github.com/lib/pq"
 	"github.ncsu.edu/jjuecks/vv8-post-processor/core"
-	"github.ncsu.edu/jjuecks/vv8-post-processor/features"
 )
 
 type Script struct {
@@ -60,7 +59,7 @@ func (agg *flowAggregator) IngestRecord(ctx *core.ExecutionContext, lineNumber i
 			return fmt.Errorf("%d: invalid mode '%c'; fields: %v", lineNumber, op, fields)
 		}
 
-		if features.FilterName(member) {
+		if core.FilterName(member) {
 			// We have some names (V8 special cases, numeric indices) that are never useful
 			return nil
 		}

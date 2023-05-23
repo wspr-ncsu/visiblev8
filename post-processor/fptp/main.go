@@ -153,8 +153,8 @@ func (agg *fptpAggregator) DumpToPostgresql(ctx *core.AggregationContext, sqlDb 
 			agg.firstPartyProperty.DisplayName,
 			scriptProperty.DisplayName,
 			originProperty.DisplayName,
-			scriptProperty.DisplayName == originProperty.DisplayName,
-			scriptProperty.DisplayName == agg.firstPartyProperty.DisplayName,
+			scriptProperty.DisplayName != originProperty.DisplayName,
+			scriptProperty.DisplayName != agg.firstPartyProperty.DisplayName,
 			agg.eMap.EntityPropertyMap[scriptURLOrigin].Tracking,
 		)
 
@@ -221,7 +221,7 @@ func (agg *fptpAggregator) DumpToStream(ctx *core.AggregationContext, stream io.
 			"FirstOrigin":    script.info.FirstOrigin,
 			"ScriptProperty": scriptProperty.DisplayName,
 			"OriginProperty": originProperty.DisplayName,
-			"ThirdParty":     scriptProperty.DisplayName == originProperty.DisplayName,
+			"ThirdParty":     scriptProperty.DisplayName != originProperty.DisplayName,
 			"Tracking":       scriptProperty.Tracking,
 		}})
 	}
