@@ -12,7 +12,6 @@ import (
 	"strings"
 
 	"github.ncsu.edu/jjuecks/vv8-post-processor/core"
-	"github.ncsu.edu/jjuecks/vv8-post-processor/features"
 )
 
 type originCallsite struct {
@@ -59,7 +58,7 @@ func (agg *CreateCallArgsAggregator) IngestRecord(ctx *core.ExecutionContext, li
 		name = strings.TrimPrefix(name, "%")
 
 		// We have some names (V8 special cases, numeric indices) that are never useful
-		if features.FilterName(name) {
+		if core.FilterName(name) {
 			return nil
 		}
 

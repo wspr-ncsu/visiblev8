@@ -70,19 +70,6 @@ func NewFeatureUsageAggregator() (core.Aggregator, error) {
 	}, nil
 }
 
-// FilterName identifies V8 object member names that should be filtered out of analysis
-func FilterName(name string) bool {
-	if name == "?" || name == "<anonymous>" {
-		// Bogus/V8-noise/unusable; don't aggregate
-		return true
-	} else if _, err := strconv.ParseInt(name, 10, 64); err == nil {
-		// Numeric property--do not aggregate
-		return true
-	} else {
-		return false
-	}
-}
-
 // IngestRecord parses a trace/callsite record and aggregates API feature usage
 func (agg *FeatureUsageAggregator) IngestRecord(ctx *core.ExecutionContext, lineNumber int, op byte, fields []string) error {
 	if (ctx.Script != nil) && !ctx.Script.VisibleV8 && (ctx.Origin != "") {
@@ -118,7 +105,7 @@ func (agg *FeatureUsageAggregator) IngestRecord(ctx *core.ExecutionContext, line
 		}
 
 		// We have some names (V8 special cases, numeric indices) that are never useful
-		if FilterName(name) {
+		if core.FilterName(name) {
 			return nil
 		}
 

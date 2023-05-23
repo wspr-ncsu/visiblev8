@@ -107,6 +107,19 @@ func splitFields(line []byte) []string {
 	return allFields
 }
 
+// FilterName identifies V8 object member names that should be filtered out of analysis
+func FilterName(name string) bool {
+	if name == "?" || name == "<anonymous>" {
+		// Bogus/V8-noise/unusable; don't aggregate
+		return true
+	} else if _, err := strconv.ParseInt(name, 10, 64); err == nil {
+		// Numeric property--do not aggregate
+		return true
+	} else {
+		return false
+	}
+}
+
 // InsertLogfile inserts (if not present) a record about this log file into PG
 func (ln *LogInfo) InsertLogfile(sqldb *sql.DB) (int, error) {
 	if !ln.Tabled {
