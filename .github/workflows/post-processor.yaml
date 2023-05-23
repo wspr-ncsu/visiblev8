@@ -41,5 +41,10 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+      - name: Remove artifacts
+        uses: docker://ubuntu:latest
+        with:
+          entrypoint: /usr/bin/rm
+          args: -rf ./post-processor/artifacts
 
 
