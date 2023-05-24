@@ -46,6 +46,4 @@ jobs:
         uses: docker://ubuntu:latest
         with:
           entrypoint: /usr/bin/rm
-          args: -rf ./post-processor/artifacts
-
-
+          args: -rf ./post-processor/artifacts ./post-processor/vv8-postprocessor ./post-processor/adblock/adblock-oracle-rs/target
