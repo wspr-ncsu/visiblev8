@@ -42,6 +42,7 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
       - name: Remove artifacts
+        if: success() || failure()
         uses: docker://ubuntu:latest
         with:
           entrypoint: /usr/bin/rm
