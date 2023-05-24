@@ -16,7 +16,6 @@ import (
 	"github.com/lib/pq"
 
 	"github.ncsu.edu/jjuecks/vv8-post-processor/core"
-	"github.ncsu.edu/jjuecks/vv8-post-processor/features"
 )
 
 type originCallsite struct {
@@ -67,7 +66,7 @@ func (agg *CreateElementAggregator) IngestRecord(ctx *core.ExecutionContext, lin
 		}
 
 		// We have some names (V8 special cases, numeric indices) that are never useful
-		if features.FilterName(name) {
+		if core.FilterName(name) {
 			return nil
 		}
 
