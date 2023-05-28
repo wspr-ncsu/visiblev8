@@ -403,7 +403,7 @@ index 9dad3911a4..425444bd1d 100644
  }
  
 diff --git a/src/interpreter/bytecode-generator.cc b/src/interpreter/bytecode-generator.cc
-index acaa1dae45..c1901a06f2 100644
+index acaa1dae45..adfa1f6055 100644
 --- a/src/interpreter/bytecode-generator.cc
 +++ b/src/interpreter/bytecode-generator.cc
 @@ -4608,6 +4608,36 @@ void BytecodeGenerator::VisitAssignment(Assignment* expr) {
@@ -532,7 +532,15 @@ index acaa1dae45..c1901a06f2 100644
        builder()->SetExpressionPosition(property);
        builder()->LoadKeyedProperty(
            obj, feedback_index(feedback_spec()->AddKeyedLoadICSlot()));
-@@ -6186,6 +6283,32 @@ void BytecodeGenerator::VisitCountOperation(CountOperation* expr) {
+@@ -5471,6 +5568,7 @@ void BytecodeGenerator::VisitCall(Call* expr) {
+   Expression* callee_expr = expr->expression();
+   Call::CallType call_type = expr->GetCallType();
+ 
++  builder()->CallRuntime(Runtime::kTraceFunctionCall);
+   if (call_type == Call::SUPER_CALL) {
+     return VisitCallSuper(expr);
+   }
+@@ -6186,6 +6284,32 @@ void BytecodeGenerator::VisitCountOperation(CountOperation* expr) {
    // Perform +1/-1 operation.
    builder()->UnaryOperation(expr->op(), feedback_index(count_slot));
  
@@ -594,7 +602,7 @@ index 591f5c8d9d..07ae35b783 100644
    LanguageMode language_mode = static_cast<LanguageMode>(args.smi_value_at(3));
    Handle<SharedFunctionInfo> outer_info(args.at<JSFunction>(2)->shared(),
 diff --git a/src/runtime/runtime-test.cc b/src/runtime/runtime-test.cc
-index 79aa8ccb40..221e6d0358 100644
+index 79aa8ccb40..96a556b653 100644
 --- a/src/runtime/runtime-test.cc
 +++ b/src/runtime/runtime-test.cc
 @@ -2,15 +2,25 @@
@@ -642,7 +650,7 @@ index 79aa8ccb40..221e6d0358 100644
  
  #ifdef V8_ENABLE_MAGLEV
  #include "src/maglev/maglev.h"
-@@ -1341,6 +1359,635 @@ RUNTIME_FUNCTION(Runtime_TraceExit) {
+@@ -1341,6 +1359,652 @@ RUNTIME_FUNCTION(Runtime_TraceExit) {
    return obj;  // return TOS
  }
  
@@ -1127,8 +1135,6 @@ index 79aa8ccb40..221e6d0358 100644
 +  }
 +
 +  ~VisV8Logger() {
-+    out() << std::endl;
-+
 +    // Trap I/O errors as fatal
 +    if (!out()) {
 +      perror("log output");
@@ -1137,6 +1143,14 @@ index 79aa8ccb40..221e6d0358 100644
 +
 +    // Check to see if our log has grown too large; rollover...
 +    if (out().tellp() > 1000 * 1000 * 1000) {  // Max 1GB per log file
++      out() << std::flush;
++
++      // Trap I/O errors as fatal
++      if (!out()) {
++        perror("log output");
++        abort();
++      }
++
 +      data->open_next_log_file();
 +    }
 +  }
@@ -1163,6 +1177,9 @@ index 79aa8ccb40..221e6d0358 100644
 +// builtin)
 +void visv8_log_property_get(Isolate* isolate, int call_site, Object obj,
 +                            Object prop) {
++  VisV8Context vctx(isolate);
++  VisV8Logger vlog(vctx);
++
 +  if (visv8_should_log_object(obj)) {
 +    // Peek at the call stack to see our offset within the active script
 +    if (call_site < 0) {
@@ -1172,13 +1189,11 @@ index 79aa8ccb40..221e6d0358 100644
 +      }
 +    }
 +
-+    VisV8Context vctx(isolate);
-+    VisV8Logger vlog(vctx);
-+
 +    vlog.out() << 'g' << call_site << ':';
 +    visv8_to_string(isolate, vlog.out(), obj);
 +    vlog.out() << ':';
 +    visv8_to_string(isolate, vlog.out(), prop);
++    vlog.out() << '\n';
 +  }
 +}
 +
@@ -1202,6 +1217,9 @@ index 79aa8ccb40..221e6d0358 100644
 +// builtin)
 +void visv8_log_property_set(Isolate* isolate, int call_site, Object obj,
 +                            Object prop, Object value) {
++  VisV8Context vctx(isolate);
++  VisV8Logger vlog(vctx);
++
 +  if (visv8_should_log_object(obj)) {
 +    // Peek at the call stack to see our offset within the active script
 +    if (call_site < 0) {
@@ -1211,15 +1229,13 @@ index 79aa8ccb40..221e6d0358 100644
 +      }
 +    }
 +
-+    VisV8Context vctx(isolate);
-+    VisV8Logger vlog(vctx);
-+
 +    vlog.out() << 's' << call_site << ':';
 +    visv8_to_string(isolate, vlog.out(), obj);
 +    vlog.out() << ':';
 +    visv8_to_string(isolate, vlog.out(), prop);
 +    vlog.out() << ':';
 +    visv8_to_string(isolate, vlog.out(), value);
++    vlog.out() << '\n';
 +  }
 +}
 +
@@ -1236,6 +1252,14 @@ index 79aa8ccb40..221e6d0358 100644
 +  Object value = args[3];
 +
 +  visv8_log_property_set(isolate, Smi::ToInt(call_site), obj, prop, value);
++
++  return ReadOnlyRoots(isolate).undefined_value();
++}
++
++// Hack to log almost all scripts that have any kind of function call
++RUNTIME_FUNCTION(Runtime_TraceFunctionCall) {
++  VisV8Context vctx(isolate);
++  VisV8Logger vlog(vctx);
 +
 +  return ReadOnlyRoots(isolate).undefined_value();
 +}
@@ -1269,6 +1293,7 @@ index 79aa8ccb40..221e6d0358 100644
 +      vlog.out() << ':';
 +      visv8_to_string(isolate, vlog.out(), (Object)argv[i], true, -1, true);
 +    }
++    vlog.out() << '\n';
 +  }
 +}
 +
@@ -1279,13 +1304,14 @@ index 79aa8ccb40..221e6d0358 100644
    SealHandleScope shs(isolate);
    DCHECK_EQ(2, args.length());
 diff --git a/src/runtime/runtime.h b/src/runtime/runtime.h
-index f94bfb47ef..563b94debf 100644
+index f94bfb47ef..a0c3fedaec 100644
 --- a/src/runtime/runtime.h
 +++ b/src/runtime/runtime.h
-@@ -597,6 +597,8 @@ namespace internal {
+@@ -597,6 +597,9 @@ namespace internal {
    F(TakeHeapSnapshot, -1, 1)                  \
    F(TraceEnter, 0, 1)                         \
    F(TraceExit, 1, 1)                          \
++  F(TraceFunctionCall, 0, 1)                  \
 +  F(TracePropertyLoad, 3, 1)                  \
 +  F(TracePropertyStore, 4, 1)                 \
    F(TurbofanStaticAssert, 1, 1)               \
