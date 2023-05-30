@@ -26,13 +26,13 @@ if [ "$LAST_RELEASE" == "visiblev8_$GIT_COMMIT-$VERSION" ]; then
 else
     echo "New release is available"
     echo "Building VisibleV8 for $VERSION"
-    make build VERSION=$VERSION DEBUG=0 PUBLISH_ASSETS=1 TESTS=1 ANDROID=1
+    make build VERSION=$VERSION DEBUG=0 PUBLISH_ASSETS=1 TESTS=1 ANDROID=1 ARM=1
     if [ $? -eq 0 ]; then
         echo "Done building VisibleV8 for $VERSION"
         curl -X POST -H 'Content-type: application/json' --data '{"text":"VisibleV8 build '$GIT_COMMIT' for Chromium version '$VERSION' has been successful!"}' $SLACK_WEBHOOK
         
         # cleanup stopped containers to reclaim disk space
-        docker container prune -f
+        # docker container prune -f
     else
         echo "Failed to build VisibleV8 for $VERSION"
         curl -X POST -H 'Content-type: application/json' --data '{"text":"VisibleV8 build '$GIT_COMMIT' for Chromium version '$VERSION' failed. Check the latest logs for errors."}' $SLACK_WEBHOOK

@@ -3,7 +3,7 @@
 build:
 	# to build a specific version, run:
 	# make build VERSION=104.0.5112.79 
-	./run.sh $(VERSION) $(DEBUG) $(PUBLISH_ASSETS) $(TESTS) $(ANDROID)
+	./run.sh $(VERSION) $(DEBUG) $(PUBLISH_ASSETS) $(TESTS) $(ANDROID) $(ARM)
 
 patch-debug:
 	docker commit $$(docker ps -q -l) patch-fail

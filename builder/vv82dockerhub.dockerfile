@@ -1,19 +1,19 @@
 ARG BASE_IMAGE=node:lts
-FROM $BASE_IMAGE
+FROM --platform=$TARGETPLATFORM $BASE_IMAGE
 
 ARG ARTIFACT_DIR
-ARG PACKAGE_NAME
+ARG PACKAGE_NAME_AMD64
+ARG PACKAGE_NAME_ARM64
 ARG VERSION
+ARG TARGETPLATFORM
 ARG RUN_USER=node
 RUN mkdir -p /artifacts
 COPY $ARTIFACT_DIR/${VERSION}/*.deb /artifacts
 COPY $ARTIFACT_DIR/${VERSION}/*.pickle /artifacts
 COPY $ARTIFACT_DIR/${VERSION}/*.json /artifacts
 
-RUN dpkg -i "/artifacts/$PACKAGE_NAME" || true
-RUN apt update && apt install -f --no-install-recommends --yes
-RUN dpkg -i "/artifacts/$PACKAGE_NAME"
-RUN rm "/artifacts/$PACKAGE_NAME"
+COPY ./install.sh /artifacts/install.sh
+RUN /artifacts/install.sh
 
 USER $RUN_USER
 WORKDIR /home/$RUN_USER
