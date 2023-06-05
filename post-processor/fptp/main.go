@@ -3,9 +3,11 @@ package fptp
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/url"
+	"strings"
 
 	"github.com/lib/pq"
 	"github.ncsu.edu/jjuecks/vv8-post-processor/core"
@@ -55,6 +57,16 @@ func (agg *fptpAggregator) IngestRecord(ctx *core.ExecutionContext, lineNumber i
 	return nil
 }
 
+func (agg *fptpAggregator) accessEntityPropertyMap(origin string) (*EntityProperty, error) {
+	for domain, entityProperty := range agg.eMap.EntityPropertyMap {
+		if strings.Contains(origin, domain) {
+			return entityProperty, nil
+		}
+	}
+
+	return nil, fmt.Errorf("no entity property found for origin %s", origin)
+}
+
 var firstPartyThirdPartyFields = [...]string{
 	"sha2",
 	"root_domain",
@@ -87,10 +99,8 @@ func (agg *fptpAggregator) DumpToPostgresql(ctx *core.AggregationContext, sqlDb 
 
 		rootURLOrigin := rootURL.Hostname()
 
-		var ok bool
-
-		agg.firstPartyProperty, ok = agg.eMap.EntityPropertyMap[rootURLOrigin]
-		if !ok {
+		agg.firstPartyProperty, err = agg.accessEntityPropertyMap(rootURLOrigin)
+		if err != nil {
 			agg.firstPartyProperty = &EntityProperty{
 				DisplayName: rootURLOrigin,
 				Tracking:    0.0,
@@ -128,16 +138,17 @@ func (agg *fptpAggregator) DumpToPostgresql(ctx *core.AggregationContext, sqlDb 
 		scriptURLOrigin := scriptURL.Hostname()
 		originURLOrigin := originURL.Hostname()
 
-		scriptProperty, ok := agg.eMap.EntityPropertyMap[scriptURLOrigin]
-		if !ok {
+		scriptProperty, err := agg.accessEntityPropertyMap(scriptURLOrigin)
+		if err != nil {
 			scriptProperty = &EntityProperty{
 				DisplayName: scriptURLOrigin,
 				Tracking:    0.0,
 			}
 			agg.eMap.EntityPropertyMap[scriptURLOrigin] = scriptProperty
 		}
-		originProperty, ok := agg.eMap.EntityPropertyMap[originURLOrigin]
-		if !ok {
+		tracking := scriptProperty.Tracking
+		originProperty, err := agg.accessEntityPropertyMap(originURLOrigin)
+		if err != nil {
 			originProperty = &EntityProperty{
 				DisplayName: scriptURLOrigin,
 				Tracking:    0.0,
@@ -155,7 +166,7 @@ func (agg *fptpAggregator) DumpToPostgresql(ctx *core.AggregationContext, sqlDb 
 			originProperty.DisplayName,
 			scriptProperty.DisplayName == originProperty.DisplayName,
 			scriptProperty.DisplayName == agg.firstPartyProperty.DisplayName,
-			agg.eMap.EntityPropertyMap[scriptURLOrigin].Tracking,
+			tracking,
 		)
 
 		if err != nil {
@@ -198,16 +209,16 @@ func (agg *fptpAggregator) DumpToStream(ctx *core.AggregationContext, stream io.
 		scriptURLOrigin := scriptURL.Hostname()
 		originURLOrigin := originURL.Hostname()
 
-		scriptProperty, ok := agg.eMap.EntityPropertyMap[scriptURLOrigin]
-		if !ok {
+		scriptProperty, err := agg.accessEntityPropertyMap(scriptURLOrigin)
+		if err != nil {
 			scriptProperty = &EntityProperty{
 				DisplayName: scriptURLOrigin,
 				Tracking:    0.0,
 			}
 			agg.eMap.EntityPropertyMap[scriptURLOrigin] = scriptProperty
 		}
-		originProperty, ok := agg.eMap.EntityPropertyMap[originURLOrigin]
-		if !ok {
+		originProperty, err := agg.accessEntityPropertyMap(originURLOrigin)
+		if err != nil {
 			originProperty = &EntityProperty{
 				DisplayName: scriptURLOrigin,
 				Tracking:    0.0,

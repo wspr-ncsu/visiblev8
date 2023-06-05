@@ -80,15 +80,17 @@ func (agg *usageAggregator) IngestRecord(ctx *core.ExecutionContext, lineNumber 
 			return nil
 		}
 
-		if strings.Contains(receiver, ",") {
-			receiver = strings.Split(receiver, ",")[1]
+		fullName, err := agg.idlTree.NormalizeMember(receiver, member)
+		if err != nil {
+			if member != "" {
+				fullName = fmt.Sprintf("%s.%s", receiver, member)
+			} else {
+				fullName = receiver
+			}
 		}
 
-		var fullName string
-		if member != "" {
-			fullName = fmt.Sprintf("%s.%s", receiver, member)
-		} else {
-			fullName = receiver
+		if strings.Contains(fullName, ",") {
+			fullName = strings.Split(fullName, ",")[1]
 		}
 
 		// Feature-map lookup/population (with IDL lookup)
