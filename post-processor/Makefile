@@ -5,12 +5,13 @@ docker:
 
 rust-build:
 	mkdir -p ./artifacts
+	rustup default stable
 	cd ./adblock/adblock-oracle-rs && cargo build --release
 	cp ./adblock/adblock-oracle-rs/target/release/adblock-oracle-rs ./artifacts/adblock
 
 go-build:
 	mkdir -p ./artifacts
-	go build .
+	go build -buildvcs=false .
 	cp ./vv8-post-processor ./artifacts/vv8-post-processor
 
 publish:

@@ -16,7 +16,6 @@ import (
 	"github.com/lib/pq"
 
 	"github.ncsu.edu/jjuecks/vv8-post-processor/core"
-	"github.ncsu.edu/jjuecks/vv8-post-processor/features"
 )
 
 type originCallsite struct {
@@ -48,7 +47,7 @@ func NewCreateElementAggregator() (core.Aggregator, error) {
 
 // IngestRecord parses a trace record, looking for document.createElement calls to track
 func (agg *CreateElementAggregator) IngestRecord(ctx *core.ExecutionContext, lineNumber int, op byte, fields []string) error {
-	if (op == 'c' || op == 'g') && (ctx.Script != nil) && !ctx.Script.VisibleV8 && (ctx.Origin != "") {
+	if (op == 'c') && (ctx.Script != nil) && !ctx.Script.VisibleV8 && (ctx.Origin != "") {
 		offset, err := strconv.Atoi(fields[0])
 		if err != nil {
 			return fmt.Errorf("%d: invalid script offset '%s'", lineNumber, fields[0])
@@ -58,9 +57,6 @@ func (agg *CreateElementAggregator) IngestRecord(ctx *core.ExecutionContext, lin
 
 		// only getters and callers are interesting
 		switch op {
-		case 'g':
-			rcvr, _ = core.StripCurlies(fields[1])
-			name, _ = core.StripQuotes(fields[2])
 		case 'c':
 			rcvr, _ = core.StripCurlies(fields[2])
 			name, _ = core.StripQuotes(fields[1])
@@ -70,7 +66,7 @@ func (agg *CreateElementAggregator) IngestRecord(ctx *core.ExecutionContext, lin
 		}
 
 		// We have some names (V8 special cases, numeric indices) that are never useful
-		if features.FilterName(name) {
+		if core.FilterName(name) {
 			return nil
 		}
 
@@ -85,8 +81,13 @@ func (agg *CreateElementAggregator) IngestRecord(ctx *core.ExecutionContext, lin
 		}
 
 		// FINALLY: if we are CALLING "Document.createElement", record the value of the first argument
-		if fullName == "Document.createElement" {
+		if fullName == "HTMLDocument.createElement" {
 			tagName, ok := core.StripQuotes(fields[3])
+			log.Printf("op=%c, rcvr=%s, name=%s, fullName=%s, \n", op, rcvr, name, fullName)
+
+			for _, field := range fields {
+				log.Printf("field: %s\n", field)
+			}
 			if ok {
 				cite := originCallsite{ctx.Origin, ctx.Script, offset}
 				tagSet := agg.tagMap[cite]
@@ -95,6 +96,7 @@ func (agg *CreateElementAggregator) IngestRecord(ctx *core.ExecutionContext, lin
 					agg.tagMap[cite] = tagSet
 				}
 				tagSet[strings.ToLower(tagName)]++
+				log.Printf("createElement: %s\n", tagName)
 			} else {
 				log.Printf("bogus argument to Document.createElement: %s\n", tagName)
 			}
@@ -162,7 +164,7 @@ func (agg *CreateElementAggregator) DumpToPostgresql(ctx *core.AggregationContex
 		if err != nil {
 			return err
 		}
-		logID, err := features.InsertLogfile(sqlDb, ctx.Ln)
+		logID, err := ctx.Ln.InsertLogfile(sqlDb)
 		if err != nil {
 			return err
 		}

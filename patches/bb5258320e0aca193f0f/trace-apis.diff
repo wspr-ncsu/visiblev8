@@ -1,8 +1,8 @@
 diff --git a/BUILD.gn b/BUILD.gn
-index 8f93779407..ff0ebe41e0 100644
+index 5cda664fdd..3ab94e7f6f 100644
 --- a/BUILD.gn
 +++ b/BUILD.gn
-@@ -245,8 +245,8 @@ declare_args() {
+@@ -250,8 +250,8 @@ declare_args() {
    # Sets -DV8_SHARED_RO_HEAP.
    v8_enable_shared_ro_heap = ""
  
@@ -13,7 +13,7 @@ index 8f93779407..ff0ebe41e0 100644
  
    # Enable third party HEAP library
    v8_enable_third_party_heap = false
-@@ -388,6 +388,9 @@ declare_args() {
+@@ -393,6 +393,9 @@ declare_args() {
    # iOS (non-simulator) does not have executable pages for 3rd party
    # applications yet so disable jit.
    v8_jitless = v8_enable_lite_mode || target_is_ios_device
@@ -23,7 +23,7 @@ index 8f93779407..ff0ebe41e0 100644
  }
  
  # Derived defaults.
-@@ -912,6 +915,10 @@ config("cppgc_header_features") {
+@@ -931,6 +934,10 @@ config("cppgc_header_features") {
    } else {
      defines = enabled_external_cppgc_defines
    }
@@ -161,13 +161,13 @@ index 5ed70c81c5..1fa52bef5f 100644
        objectJSReceiver, name, receiver, SmiConstant(kReturnUndefined));
  }
 diff --git a/src/compiler/js-call-reducer.cc b/src/compiler/js-call-reducer.cc
-index db77216b74..fa76122753 100644
+index b6eca3f86f..7e15adda08 100644
 --- a/src/compiler/js-call-reducer.cc
 +++ b/src/compiler/js-call-reducer.cc
-@@ -3706,222 +3706,8 @@ FastApiCallFunctionVector CanOptimizeFastCall(
+@@ -3708,224 +3708,8 @@ FastApiCallFunctionVector CanOptimizeFastCall(
  
- Reduction JSCallReducer::ReduceCallApiFunction(
-     Node* node, const SharedFunctionInfoRef& shared) {
+ Reduction JSCallReducer::ReduceCallApiFunction(Node* node,
+                                                SharedFunctionInfoRef shared) {
 -  JSCallNode n(node);
 -  CallParameters const& p = n.Parameters();
 -  int const argc = p.arity_without_implicit_args();
@@ -217,7 +217,7 @@ index db77216b74..fa76122753 100644
 -    // Try to infer the {receiver} maps from the graph.
 -    MapInference inference(broker(), receiver, effect);
 -    if (inference.HaveMaps()) {
--      ZoneVector<MapRef> const& receiver_maps = inference.GetMaps();
+-      ZoneRefSet<Map> const& receiver_maps = inference.GetMaps();
 -      MapRef first_receiver_map = receiver_maps[0];
 -
 -      // See if we can constant-fold the compatible receiver checks.
@@ -334,8 +334,7 @@ index db77216b74..fa76122753 100644
 -  if (!function_template_info.call_code(broker()).has_value()) {
 -    TRACE_BROKER_MISSING(broker(), "call code for function template info "
 -                                       << function_template_info);
-+    // VisibleV8
-     return NoChange();
+-    return NoChange();
 -  }
 -
 -  // Handles overloaded functions.
@@ -344,7 +343,9 @@ index db77216b74..fa76122753 100644
 -      broker(), graph()->zone(), function_template_info, argc);
 -  DCHECK_LE(c_candidate_functions.size(), 2);
 -
--  if (!c_candidate_functions.empty()) {
+-  // TODO(v8:13600): Support exception handling for FastApiCall nodes.
+-  if (!c_candidate_functions.empty() &&
+-      !NodeProperties::IsExceptionalCall(node)) {
 -    FastApiCallReducerAssembler a(this, node, function_template_info,
 -                                  c_candidate_functions, receiver, holder,
 -                                  shared, target, argc, effect);
@@ -385,6 +386,8 @@ index db77216b74..fa76122753 100644
 -  node->ReplaceInput(6 + argc + 2, effect);
 -  NodeProperties::ChangeOp(node, common()->Call(call_descriptor));
 -  return Changed(node);
++  // VisibleV8
++  return NoChange();
  }
  
  namespace {
@@ -403,10 +406,10 @@ index 9dad3911a4..425444bd1d 100644
  }
  
 diff --git a/src/interpreter/bytecode-generator.cc b/src/interpreter/bytecode-generator.cc
-index acaa1dae45..adfa1f6055 100644
+index 139ed00b4b..bffe743099 100644
 --- a/src/interpreter/bytecode-generator.cc
 +++ b/src/interpreter/bytecode-generator.cc
-@@ -4608,6 +4608,36 @@ void BytecodeGenerator::VisitAssignment(Assignment* expr) {
+@@ -4863,6 +4863,36 @@ void BytecodeGenerator::VisitAssignment(Assignment* expr) {
  
    VisitForAccumulatorValue(expr->value());
  
@@ -443,7 +446,7 @@ index acaa1dae45..adfa1f6055 100644
    builder()->SetExpressionPosition(expr);
    BuildAssignment(lhs_data, expr->op(), expr->lookup_hoisting_mode());
  }
-@@ -4704,6 +4734,36 @@ void BytecodeGenerator::VisitCompoundAssignment(CompoundAssignment* expr) {
+@@ -4959,6 +4989,36 @@ void BytecodeGenerator::VisitCompoundAssignment(CompoundAssignment* expr) {
      VisitForAccumulatorValue(expr->value());
      builder()->BinaryOperation(binop->op(), old_value, feedback_index(slot));
    }
@@ -480,7 +483,7 @@ index acaa1dae45..adfa1f6055 100644
    builder()->SetExpressionPosition(expr);
  
    BuildAssignment(lhs_data, expr->op(), expr->lookup_hoisting_mode());
-@@ -5149,6 +5209,21 @@ void BytecodeGenerator::VisitPropertyLoad(Register obj, Property* property) {
+@@ -5404,6 +5464,21 @@ void BytecodeGenerator::VisitPropertyLoad(Register obj, Property* property) {
      case NON_PROPERTY:
        UNREACHABLE();
      case NAMED_PROPERTY: {
@@ -502,7 +505,7 @@ index acaa1dae45..adfa1f6055 100644
        builder()->SetExpressionPosition(property);
        const AstRawString* name =
            property->key()->AsLiteral()->AsRawPropertyName();
-@@ -5156,7 +5231,29 @@ void BytecodeGenerator::VisitPropertyLoad(Register obj, Property* property) {
+@@ -5411,7 +5486,29 @@ void BytecodeGenerator::VisitPropertyLoad(Register obj, Property* property) {
        break;
      }
      case KEYED_PROPERTY: {
@@ -532,7 +535,7 @@ index acaa1dae45..adfa1f6055 100644
        builder()->SetExpressionPosition(property);
        builder()->LoadKeyedProperty(
            obj, feedback_index(feedback_spec()->AddKeyedLoadICSlot()));
-@@ -5471,6 +5568,7 @@ void BytecodeGenerator::VisitCall(Call* expr) {
+@@ -5729,6 +5826,7 @@ void BytecodeGenerator::VisitCall(Call* expr) {
    Expression* callee_expr = expr->expression();
    Call::CallType call_type = expr->GetCallType();
  
@@ -540,7 +543,7 @@ index acaa1dae45..adfa1f6055 100644
    if (call_type == Call::SUPER_CALL) {
      return VisitCallSuper(expr);
    }
-@@ -6186,6 +6284,32 @@ void BytecodeGenerator::VisitCountOperation(CountOperation* expr) {
+@@ -6456,6 +6554,32 @@ void BytecodeGenerator::VisitCountOperation(CountOperation* expr) {
    // Perform +1/-1 operation.
    builder()->UnaryOperation(expr->op(), feedback_index(count_slot));
  
@@ -574,7 +577,7 @@ index acaa1dae45..adfa1f6055 100644
    builder()->SetExpressionPosition(expr);
    switch (assign_type) {
 diff --git a/src/runtime/runtime-compiler.cc b/src/runtime/runtime-compiler.cc
-index 591f5c8d9d..07ae35b783 100644
+index 42c161dfa7..d41f4c3813 100644
 --- a/src/runtime/runtime-compiler.cc
 +++ b/src/runtime/runtime-compiler.cc
 @@ -18,7 +18,10 @@
@@ -589,7 +592,7 @@ index 591f5c8d9d..07ae35b783 100644
  namespace {
  void LogExecution(Isolate* isolate, Handle<JSFunction> function) {
    DCHECK(v8_flags.log_function_events);
-@@ -646,6 +649,11 @@ RUNTIME_FUNCTION(Runtime_ResolvePossiblyDirectEval) {
+@@ -677,6 +680,11 @@ RUNTIME_FUNCTION(Runtime_ResolvePossiblyDirectEval) {
      return *callee;
    }
  
@@ -602,7 +605,7 @@ index 591f5c8d9d..07ae35b783 100644
    LanguageMode language_mode = static_cast<LanguageMode>(args.smi_value_at(3));
    Handle<SharedFunctionInfo> outer_info(args.at<JSFunction>(2)->shared(),
 diff --git a/src/runtime/runtime-test.cc b/src/runtime/runtime-test.cc
-index 79aa8ccb40..96a556b653 100644
+index 8edc0a6c98..511be92b14 100644
 --- a/src/runtime/runtime-test.cc
 +++ b/src/runtime/runtime-test.cc
 @@ -2,15 +2,25 @@
@@ -631,7 +634,7 @@ index 79aa8ccb40..96a556b653 100644
  #include "src/codegen/compiler.h"
  #include "src/codegen/pending-optimization-table.h"
  #include "src/compiler-dispatcher/lazy-compile-dispatcher.h"
-@@ -33,10 +43,18 @@
+@@ -35,10 +45,18 @@
  #include "src/objects/js-atomics-synchronization-inl.h"
  #include "src/objects/js-function-inl.h"
  #include "src/objects/js-regexp-inl.h"
@@ -650,7 +653,7 @@ index 79aa8ccb40..96a556b653 100644
  
  #ifdef V8_ENABLE_MAGLEV
  #include "src/maglev/maglev.h"
-@@ -1341,6 +1359,652 @@ RUNTIME_FUNCTION(Runtime_TraceExit) {
+@@ -1354,6 +1372,652 @@ RUNTIME_FUNCTION(Runtime_TraceExit) {
    return obj;  // return TOS
  }
  
@@ -1304,10 +1307,10 @@ index 79aa8ccb40..96a556b653 100644
    SealHandleScope shs(isolate);
    DCHECK_EQ(2, args.length());
 diff --git a/src/runtime/runtime.h b/src/runtime/runtime.h
-index f94bfb47ef..a0c3fedaec 100644
+index ab3ecfac97..3181aeb5c9 100644
 --- a/src/runtime/runtime.h
 +++ b/src/runtime/runtime.h
-@@ -597,6 +597,9 @@ namespace internal {
+@@ -598,6 +598,9 @@ namespace internal {
    F(TakeHeapSnapshot, -1, 1)                  \
    F(TraceEnter, 0, 1)                         \
    F(TraceExit, 1, 1)                          \

@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.ncsu.edu/jjuecks/vv8-post-processor/core"
-	"github.ncsu.edu/jjuecks/vv8-post-processor/features"
 )
 
 // FeatureUsageAggregator implements the Aggregator interface for collecting minimal script API usage data
@@ -58,7 +57,7 @@ func (agg *FeatureUsageAggregator) IngestRecord(ctx *core.ExecutionContext, line
 		}
 
 		// We have some names (V8 special cases, numeric indices) that are never useful
-		if features.FilterName(name) {
+		if core.FilterName(name) {
 			return nil
 		}
 
@@ -113,7 +112,7 @@ func (agg *FeatureUsageAggregator) DumpToStream(ctx *core.AggregationContext, st
 func (agg *FeatureUsageAggregator) DumpToPostgresql(ctx *core.AggregationContext, sqlDb *sql.DB) error {
 	if ctx.Formats["ufeatures"] {
 
-		logID, err := features.InsertLogfile(sqlDb, ctx.Ln)
+		logID, err := ctx.Ln.InsertLogfile(sqlDb)
 		if err != nil {
 			return err
 		}

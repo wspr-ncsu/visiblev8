@@ -36,7 +36,7 @@ for interface in web_idl_database.interfaces:
         'properties': attributes,
         'methods': operations,
         'parent': interface.inherited.identifier if interface.inherited else None,
-        'aliases': [],
+        'aliases': aliases
     }
 
 print(json.dumps(idl_data, indent=2, sort_keys=True))

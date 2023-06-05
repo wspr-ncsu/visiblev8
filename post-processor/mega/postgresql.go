@@ -34,7 +34,7 @@ func (agg *usageAggregator) DumpToPostgresql(ctx *core.AggregationContext, sqlDb
 	var pctx postgresqlContext
 
 	// Step 0: Make sure the current log file is inserted (and get its ID)
-	pctx.logfileID, err = InsertLogfile(sqlDb, ctx.Ln)
+	pctx.logfileID, err = ctx.Ln.InsertLogfile(sqlDb)
 	if err != nil {
 		return fmt.Errorf("megaFeatures.DumpToMongresql/logFile: %w", err)
 	}

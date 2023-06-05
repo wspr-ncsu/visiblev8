@@ -7,6 +7,7 @@ package core
 import (
 	"bufio"
 	"crypto/sha256"
+	"database/sql"
 	"fmt"
 	"io"
 	"log"
@@ -104,6 +105,45 @@ func splitFields(line []byte) []string {
 	}
 
 	return allFields
+}
+
+// FilterName identifies V8 object member names that should be filtered out of analysis
+func FilterName(name string) bool {
+	if name == "?" || name == "<anonymous>" {
+		// Bogus/V8-noise/unusable; don't aggregate
+		return true
+	} else if _, err := strconv.ParseInt(name, 10, 64); err == nil {
+		// Numeric property--do not aggregate
+		return true
+	} else {
+		return false
+	}
+}
+
+// InsertLogfile inserts (if not present) a record about this log file into PG
+func (ln *LogInfo) InsertLogfile(sqldb *sql.DB) (int, error) {
+	if !ln.Tabled {
+
+		query := `INSERT INTO logfile
+	(mongo_oid, uuid, root_name, size, lines, submissionid) VALUES ($1, $2, $3, $4, $5, $6)
+	ON CONFLICT DO NOTHING`
+		_, err := sqldb.Exec(query, ln.MongoID.String(), ln.ID.String(), ln.RootName, ln.Stats.Bytes, ln.Stats.Lines, ln.SubmissionID.String())
+
+		if err != nil {
+			return 0, err
+		}
+
+		ln.Tabled = true
+	}
+
+	var logID int
+
+	err := sqldb.QueryRow(`SELECT id FROM logfile WHERE uuid = $1`, ln.ID.String()).Scan(&logID)
+	if err != nil {
+		return 0, err
+	}
+
+	return logID, nil
 }
 
 // NewLogInfo constructs a fresh LogInfo for the given vv8log Mongo oid (if available) and root log filename (if available)

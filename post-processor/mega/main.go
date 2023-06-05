@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.ncsu.edu/jjuecks/vv8-post-processor/core"
-	"github.ncsu.edu/jjuecks/vv8-post-processor/features"
 )
 
 // Feature stores a distinct "raw Feature name", its components, and any IDL data found
@@ -75,7 +74,7 @@ func (agg *usageAggregator) IngestRecord(ctx *core.ExecutionContext, lineNumber 
 			return fmt.Errorf("%d: invalid mode '%c'; fields: %v", lineNumber, op, fields)
 		}
 
-		if features.FilterName(member) {
+		if core.FilterName(member) {
 			// We have some names (V8 special cases, numeric indices) that are never useful
 			return nil
 		}

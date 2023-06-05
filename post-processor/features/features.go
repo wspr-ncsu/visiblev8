@@ -70,19 +70,6 @@ func NewFeatureUsageAggregator() (core.Aggregator, error) {
 	}, nil
 }
 
-// FilterName identifies V8 object member names that should be filtered out of analysis
-func FilterName(name string) bool {
-	if name == "?" || name == "<anonymous>" {
-		// Bogus/V8-noise/unusable; don't aggregate
-		return true
-	} else if _, err := strconv.ParseInt(name, 10, 64); err == nil {
-		// Numeric property--do not aggregate
-		return true
-	} else {
-		return false
-	}
-}
-
 // IngestRecord parses a trace/callsite record and aggregates API feature usage
 func (agg *FeatureUsageAggregator) IngestRecord(ctx *core.ExecutionContext, lineNumber int, op byte, fields []string) error {
 	if (ctx.Script != nil) && !ctx.Script.VisibleV8 && (ctx.Origin != "") {
@@ -118,7 +105,7 @@ func (agg *FeatureUsageAggregator) IngestRecord(ctx *core.ExecutionContext, line
 		}
 
 		// We have some names (V8 special cases, numeric indices) that are never useful
-		if FilterName(name) {
+		if core.FilterName(name) {
 			return nil
 		}
 
@@ -226,27 +213,6 @@ var scriptCreationFields = [...]string{
 	"first_origin",
 }
 
-// InsertLogfile inserts (if not present) a record about this log file into PG
-func InsertLogfile(sqldb *sql.DB, ln *core.LogInfo) (int, error) {
-	query := `INSERT INTO logfile
-(mongo_id, uuid, root_name, size, lines) VALUES ($1, $2, $3, $4, $5)
-ON CONFLICT DO NOTHING`
-	_, err := sqldb.Exec(query, ln.MongoID.String(), ln.ID.String(), ln.RootName, ln.Stats.Bytes, ln.Stats.Lines)
-
-	if err != nil {
-		return 0, err
-	}
-
-	var logID int
-
-	err = sqldb.QueryRow(`SELECT id FROM logfile WHERE uuid = $1`, ln.ID.String()).Scan(&logID)
-	if err != nil {
-		return 0, err
-	}
-
-	return logID, nil
-}
-
 type featureTupleRecord struct {
 	securityOrigin string
 	scriptHash     []byte
@@ -299,7 +265,7 @@ func (agg *FeatureUsageAggregator) storeFeatureTuplePostgresql(ln *core.LogInfo,
 	}
 
 	// Insert record (if necessary) for logfile itself
-	logID, err := InsertLogfile(sqlDb, ln)
+	logID, err := ln.InsertLogfile(sqlDb)
 	if err != nil {
 		return err
 	}
@@ -361,7 +327,7 @@ func (agg *FeatureUsageAggregator) dumpPolyFeatureTuples(ln *core.LogInfo, sqlDb
 	}
 
 	// Insert record (if necessary) for logfile itself
-	logID, err := InsertLogfile(sqlDb, ln)
+	logID, err := ln.InsertLogfile(sqlDb)
 	if err != nil {
 		return err
 	}
@@ -459,7 +425,7 @@ func (agg *FeatureUsageAggregator) storeScriptTuplesPostgresql(ctx *core.Aggrega
 	}
 
 	// Insert record (if necessary) for logfile itself
-	logID, err := InsertLogfile(sqlDb, ctx.Ln)
+	logID, err := ctx.Ln.InsertLogfile(sqlDb)
 	if err != nil {
 		return err
 	}

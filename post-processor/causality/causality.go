@@ -21,7 +21,6 @@ import (
 	"golang.org/x/net/html/atom"
 
 	"github.ncsu.edu/jjuecks/vv8-post-processor/core"
-	"github.ncsu.edu/jjuecks/vv8-post-processor/features"
 )
 
 type genesisLink struct {
@@ -619,7 +618,7 @@ func (agg *ScriptCausalityAggregator) DumpToMongresql(ctx *core.AggregationConte
 		if err != nil {
 			return err
 		}
-		logID, err := features.InsertLogfile(sqlDb, ctx.Ln)
+		logID, err := ctx.Ln.InsertLogfile(sqlDb)
 		if err != nil {
 			return err
 		}

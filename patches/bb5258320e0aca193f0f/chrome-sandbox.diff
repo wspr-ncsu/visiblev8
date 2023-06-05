@@ -1,0 +1,47 @@
+diff --git a/base/android/java/src/org/chromium/base/process_launcher/BindService.java b/base/android/java/src/org/chromium/base/process_launcher/BindService.java
+index 16deaede32a9c..85217826e564c 100644
+--- a/base/android/java/src/org/chromium/base/process_launcher/BindService.java
++++ b/base/android/java/src/org/chromium/base/process_launcher/BindService.java
+@@ -30,7 +30,7 @@ final class BindService {
+ 
+     static boolean supportVariableConnections() {
+         return Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+-                && !BuildConfig.IS_INCREMENTAL_INSTALL;
++                && !true;  // VisibleV8 android change required disabling renderer isolation.
+     }
+ 
+     // Note that handler is not guaranteed to be used, and client still need to correctly handle
+diff --git a/chrome/android/java/AndroidManifest.xml b/chrome/android/java/AndroidManifest.xml
+index db72fb7356e29..cdc5ecffa66b3 100644
+--- a/chrome/android/java/AndroidManifest.xml
++++ b/chrome/android/java/AndroidManifest.xml
+@@ -1233,13 +1233,13 @@ by a child template that "extends" this file.
+       <service android:name="org.chromium.content.app.SandboxedProcessService{{ i }}"
+           android:process=":sandboxed_process{{ i }}"
+           android:permission="{{ manifest_package }}.permission.CHILD_SERVICE"
+-          android:isolatedProcess="true"
++          android:isolatedProcess="false"
+           android:exported="{{sandboxed_service_exported|default(false)}}"
+           {% if (i == 0) %}
+           android:useAppZygote="true"
+           {% endif %}
+           {% if (sandboxed_service_exported|default(false)) == 'true' %}
+-          android:externalService="true"
++          android:externalService="false"
+           tools:ignore="ExportedService"
+           android:visibleToInstantApps="true"
+           {% endif %} />
+diff --git a/content/renderer/renderer_main.cc b/content/renderer/renderer_main.cc
+index 3195511de7997..d91b0b5b9fdb0 100644
+--- a/content/renderer/renderer_main.cc
++++ b/content/renderer/renderer_main.cc
+@@ -221,8 +221,7 @@ int RendererMain(MainFunctionParams parameters) {
+   {
+     content::ContentRendererClient* client = GetContentClient()->renderer();
+     bool should_run_loop = true;
+-    bool need_sandbox =
+-        !command_line.HasSwitch(sandbox::policy::switches::kNoSandbox);
++    bool need_sandbox = false; // VisibleV8 disable sandbox for desktop
+ 
+     if (!need_sandbox) {
+       // The post-sandbox actions still need to happen at some point.
