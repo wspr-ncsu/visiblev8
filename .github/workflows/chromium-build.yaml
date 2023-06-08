@@ -7,6 +7,8 @@ on:
 jobs:
     build_vv8:
         runs-on: self-hosted
+        timeout-minutes: 2880
+# Lets give ourselves 2 day to build VisibleV8 (github by default gives 6 hrs which is not enough time to build Chrome three times unless we use Google magic)
         steps:
         - uses: actions/checkout@v3
           with:
