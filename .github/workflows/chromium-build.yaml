@@ -1,0 +1,143 @@
+on:
+    push:
+      branches:
+        - 'main'
+    schedule:
+      - cron: '0 0 * * *'
+jobs:
+    build_vv8:
+        runs-on: self-hosted
+        steps:
+        - uses: actions/checkout@v3
+          with:
+            clean: false
+        - name: Extract short SHA
+          id: short_sha
+          run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+        - uses: actions/github-script@v6
+          id: get_release
+          with:
+            script: |
+              const release = await github.rest.repos.getLatestRelease({
+                owner: 'wspr-ncsu',
+                repo: 'visiblev8'
+              });
+              const tag = release.data.tag_name;
+              const currentGitCommit = '${{ steps.short_sha.outputs.sha_short }}'
+              const [_, commit, fullVersion, majorVersion] = tag.match(/visiblev8_([0-9a-f]+)-(([0-9]+)\.[0-9.]+)/);
+              const chromeReleaseVersion = await (await fetch('https://omahaproxy.appspot.com/linux')).text();
+              const chromeMajorVersion = chromeReleaseVersion.split('.')[0];
+              console.log(`tag: ${tag}`);
+              console.log(`commit: ${commit}`);
+              console.log(`oldVersion: ${fullVersion}`);
+              console.log(`majorVersion: ${chromeMajorVersion}`);
+              console.log(`currentGitCommit: ${currentGitCommit}`);
+              console.log(`chromeReleaseVersion: ${chromeReleaseVersion}`);
+              const shouldPublish = currentGitCommit !== commit || chromeReleaseVersion !== fullVersion;
+              console.log(`shouldPublish: ${shouldPublish}`);
+              core.setOutput('shouldPublish', shouldPublish);
+              core.setOutput('tag', tag);
+              core.setOutput('commit', commit);
+              core.setOutput('fullVersion', fullVersion);
+              core.setOutput('majorVersion', majorVersion);
+              core.setOutput('chromeReleaseVersion', chromeReleaseVersion);
+              core.setOutput('currentGitCommit', currentGitCommit);
+              core.setOutput('chromeMajorVersion', chromeMajorVersion);
+        - name: Build VisibleV8
+          if: steps.get_release.outputs.shouldPublish == 'true' 
+          env:
+            VERSION: ${{ steps.get_release.outputs.chromeReleaseVersion }}
+          run: |
+            cd builder && make build VERSION=$VERSION DEBUG=0 PUBLISH_ASSETS=0 TESTS=1 ANDROID=1 ARM=1
+        - name: Get VV8 artifact name
+          if: steps.get_release.outputs.shouldPublish == 'true'
+          id: artifact_name
+          run: |
+            PACKAGE_NAME_AMD64=`find ./builder/artifacts -name '*amd64.deb' -printf "%f\n" | sort -V | tail -n 1`
+            PACKAGE_NAME_ARM64=`find ./builder/artifacts -name '*arm64.deb' -printf "%f\n" | sort -V | tail -n 1`
+            echo "artifact_name_amd64=$PACKAGE_NAME_AMD64" >> $GITHUB_OUTPUT
+            echo "artifact_name_arm64=$PACKAGE_NAME_ARM64" >> $GITHUB_OUTPUT
+        - name: Log in to Docker Hub
+          uses: docker/login-action@v2
+          with:
+            username: visiblev8
+            password: ${{ secrets.DOCKERHUB_PASSWORD }}
+        - name: Extract metadata (tags, labels) for Docker
+          id: meta
+          if: steps.get_release.outputs.shouldPublish == 'true'
+          uses: docker/metadata-action@v4
+          with:
+            images: visiblev8/vv8-base
+            tags: |
+              type=raw,value=latest,enable=true
+              type=raw,value=${{ steps.short_sha.outputs.sha_short }}_${{ steps.get_release.outputs.chromeReleaseVersion }},enable=true
+        - name: Build and push Docker image
+          uses: docker/build-push-action@v4
+          if: steps.get_release.outputs.shouldPublish == 'true'
+          with:
+            context: ./builder/
+            build-args: |
+              VERSION=${{ steps.get_release.outputs.chromeReleaseVersion }}
+              ARTIFACT_DIR=./artifacts
+              PACKAGE_NAME_AMD64=${{ steps.artifact_name.outputs.artifact_name_amd64 }}
+              PACKAGE_NAME_ARM64=${{ steps.artifact_name.outputs.artifact_name_arm64 }}
+            platforms: linux/amd64,linux/arm64
+            file: ./builder/vv82dockerhub.dockerfile
+            push: true
+            tags: ${{ steps.meta.outputs.tags }}
+            labels: ${{ steps.meta.outputs.labels }}
+        - name: Prepare artifacts for upload
+          if: steps.get_release.outputs.shouldPublish == 'true'
+          id: artifact
+          env:
+            VERSION: ${{ steps.get_release.outputs.chromeReleaseVersion }}
+            GIT_COMMIT: ${{ steps.short_sha.outputs.sha_short }}
+          run: |
+            ARTIFACT_FILE=../visiblev8_$GIT_COMMIT-$VERSION.tar.gz
+            ARTIFACT_NAME=visiblev8_$GIT_COMMIT-$VERSION.tar.gz
+            cd builder/artifacts && tar -czvf $ARTIFACT_FILE $VERSION/*.deb $VERSION/*.pickle $VERSION/*.json $VERSION/*.apk
+            echo "artifact_file=$ARTIFACT_FILE" >> $GITHUB_OUTPUT
+            echo "artifact_name=$ARTIFACT_NAME" >> $GITHUB_OUTPUT
+        - name: Create a release
+          if: steps.get_release.outputs.shouldPublish == 'true'
+          id: create_release
+          uses: actions/github-script@v6
+          with:
+            script: |
+              const name = 'visiblev8_${{ steps.get_release.outputs.currentGitCommit }}-${{ steps.get_release.outputs.chromeReleaseVersion }}';
+              const release = await github.rest.repos.createRelease({
+                owner: 'wspr-ncsu',
+                repo: 'visiblev8',
+                tag_name: name,
+                name: name,
+                body: 'This is the release for VisibleV8 commit ${{ steps.get_release.outputs.currentGitCommit }} based on Chromium ${{ steps.get_release.outputs.chromeReleaseVersion }} (major version ${{ steps.get_release.outputs.chromeMajorVersion }}).',
+                draft: false,
+                prerelease: false
+              });
+              console.log(release);
+              core.setOutput('releaseUploadURL', release.data.upload_url);
+              core.setOutput('release_id', release.data.id);
+        - name: Upload artifacts
+          if: steps.get_release.outputs.shouldPublish == 'true'
+          run: |
+            curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -H "Content-Type: application/gzip" \
+              --data-binary @./builder/artifacts/${{ steps.artifact.outputs.artifact_file }} \
+              "${{ steps.create_release.outputs.releaseUploadURL }}=${{ steps.artifact.outputs.artifact_name }}&label=${{ steps.artifact.outputs.artifact_name }}"
+            rm -rf ./builder/artifacts/${{ steps.artifact.outputs.artifact_name }}
+        - name: Notify slack that the build succeeded
+          if: steps.get_release.outputs.shouldPublish == 'true' && success()
+          run: |
+            curl -X POST -H 'Content-type: application/json' --data '{"text":"VisibleV8 build '${{ steps.get_release.outputs.currentGitCommit }}' for Chromium version '${{ steps.get_release.outputs.chromeReleaseVersion }}' has been successful!"}' ${{ secrets.SLACK_WEBHOOK  }}
+        - name: Notify slack that the build failed
+          if: failure()
+          run: |
+            curl -X POST -H 'Content-type: application/json' --data '{"text":"VisibleV8 build '${{ steps.get_release.outputs.currentGitCommit }}' for Chromium version '${{ steps.get_release.outputs.chromeReleaseVersion }}' failed. Check the logs for github action ${{ github.run_id }} for errors."}' ${{ secrets.SLACK_WEBHOOK  }}
+        - name: Cleaning up docker environment
+          if: steps.get_release.outputs.shouldPublish == 'true' && ( success() || failure() )
+          run: |
+            docker system prune -f
+        - name: Cleaning built data
+          if: steps.get_release.outputs.shouldPublish == 'true' && ( success() || failure() )
+          run: |
+            rm -rf ./builder/visiblev8_*-*.tar.gz
