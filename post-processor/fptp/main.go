@@ -42,7 +42,7 @@ func NewFptpAggregator() (core.Aggregator, error) {
 }
 
 func (agg *fptpAggregator) IngestRecord(ctx *core.ExecutionContext, lineNumber int, op byte, fields []string) error {
-	if (ctx.Script != nil) && !ctx.Script.VisibleV8 && (ctx.Origin != "") {
+	if (ctx.Script != nil) && !ctx.Script.VisibleV8 && (ctx.Origin.Origin != "") {
 		_, ok := agg.scriptList[ctx.Script.ID]
 
 		if !ok {
@@ -119,7 +119,7 @@ func (agg *fptpAggregator) DumpToPostgresql(ctx *core.AggregationContext, sqlDb 
 			return err
 		}
 
-		originURL, err := url.Parse(script.info.FirstOrigin)
+		originURL, err := url.Parse(script.info.FirstOrigin.Origin)
 
 		if err != nil {
 			return err
@@ -189,7 +189,7 @@ func (agg *fptpAggregator) DumpToStream(ctx *core.AggregationContext, stream io.
 			return err
 		}
 
-		originURL, err := url.Parse(script.info.FirstOrigin)
+		originURL, err := url.Parse(script.info.FirstOrigin.Origin)
 
 		if err != nil {
 			return err

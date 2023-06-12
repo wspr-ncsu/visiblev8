@@ -605,7 +605,7 @@ index 42c161dfa7..d41f4c3813 100644
    LanguageMode language_mode = static_cast<LanguageMode>(args.smi_value_at(3));
    Handle<SharedFunctionInfo> outer_info(args.at<JSFunction>(2)->shared(),
 diff --git a/src/runtime/runtime-test.cc b/src/runtime/runtime-test.cc
-index 8edc0a6c98..511be92b14 100644
+index 8edc0a6c98..58fd8cf508 100644
 --- a/src/runtime/runtime-test.cc
 +++ b/src/runtime/runtime-test.cc
 @@ -2,15 +2,25 @@
@@ -653,7 +653,7 @@ index 8edc0a6c98..511be92b14 100644
  
  #ifdef V8_ENABLE_MAGLEV
  #include "src/maglev/maglev.h"
-@@ -1354,6 +1372,652 @@ RUNTIME_FUNCTION(Runtime_TraceExit) {
+@@ -1354,6 +1372,660 @@ RUNTIME_FUNCTION(Runtime_TraceExit) {
    return obj;  // return TOS
  }
  
@@ -969,13 +969,21 @@ index 8edc0a6c98..511be92b14 100644
 +      // Littered with evil hacks to work around WebKit/Blink's brokenness
 +      // w.r.t. initializing its Window object
 +      if (native_global->GetEmbedderField(1).IsSmi()) {
-+        auto origin = JSReceiver::GetProperty(isolate, native_global, "origin");
-+        Handle<Object> origin_value;
-+        if (origin.ToHandle(&origin_value)) {
-+          out << '@';
-+          visv8_to_string(isolate, out, *origin_value);
-+          out << '\n';
-+          return;  // Early out
++        auto location = JSReceiver::GetProperty(isolate, native_global, "location");
++        Handle<Object> location_value;
++        if ( location.ToHandle(&location_value) ) {
++          Handle<JSReceiver> location_jsrecv =  Handle<JSReceiver>::cast(location_value);
++          auto href = JSReceiver::GetProperty(isolate, location_jsrecv, "href");
++          Object security_token = isolate->context().native_context().security_token();
++          Handle<Object> origin_value;
++          if (href.ToHandle(&origin_value)) {
++            out << '@';
++            visv8_to_string(isolate, out, *origin_value);
++            out << ":";
++            visv8_to_string(isolate, out, security_token);
++            out << '\n';
++            return;  // Early out
++          }
 +        }
 +      }
 +    }

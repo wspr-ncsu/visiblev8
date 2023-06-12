@@ -51,7 +51,7 @@ func NewAggregator() (core.Aggregator, error) {
 // IngestRecord does nothing for MicroScriptsAggregators (since we care only about the scripts processed by the core framework)
 func (agg *usageAggregator) IngestRecord(ctx *core.ExecutionContext, lineNumber int, op byte, fields []string) error {
 	// Only in a valid script/execution context...
-	if (ctx.Script != nil) && !ctx.Script.VisibleV8 && (ctx.Origin != "") {
+	if (ctx.Script != nil) && !ctx.Script.VisibleV8 && (ctx.Origin.Origin != "") {
 		// Raw field parsing/handling (offset, receiver/member, filtering, full-name)
 		offset, err := strconv.Atoi(fields[0])
 		if err != nil {
@@ -108,7 +108,7 @@ func (agg *usageAggregator) IngestRecord(ctx *core.ExecutionContext, lineNumber 
 		// Usage-map counting
 		usage := Usage{
 			script:  ctx.Script,
-			origin:  ctx.Origin,
+			origin:  ctx.Origin.Origin,
 			feature: feature,
 			offset:  offset,
 			mode:    rune(op),

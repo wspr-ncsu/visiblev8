@@ -47,7 +47,7 @@ func NewCreateElementAggregator() (core.Aggregator, error) {
 
 // IngestRecord parses a trace record, looking for document.createElement calls to track
 func (agg *CreateElementAggregator) IngestRecord(ctx *core.ExecutionContext, lineNumber int, op byte, fields []string) error {
-	if (op == 'c') && (ctx.Script != nil) && !ctx.Script.VisibleV8 && (ctx.Origin != "") {
+	if (op == 'c') && (ctx.Script != nil) && !ctx.Script.VisibleV8 && (ctx.Origin.Origin != "") {
 		offset, err := strconv.Atoi(fields[0])
 		if err != nil {
 			return fmt.Errorf("%d: invalid script offset '%s'", lineNumber, fields[0])
@@ -89,7 +89,7 @@ func (agg *CreateElementAggregator) IngestRecord(ctx *core.ExecutionContext, lin
 				log.Printf("field: %s\n", field)
 			}
 			if ok {
-				cite := originCallsite{ctx.Origin, ctx.Script, offset}
+				cite := originCallsite{ctx.Origin.Origin, ctx.Script, offset}
 				tagSet := agg.tagMap[cite]
 				if tagSet == nil {
 					tagSet = make(map[string]int)

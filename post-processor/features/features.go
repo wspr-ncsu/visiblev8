@@ -72,7 +72,7 @@ func NewFeatureUsageAggregator() (core.Aggregator, error) {
 
 // IngestRecord parses a trace/callsite record and aggregates API feature usage
 func (agg *FeatureUsageAggregator) IngestRecord(ctx *core.ExecutionContext, lineNumber int, op byte, fields []string) error {
-	if (ctx.Script != nil) && !ctx.Script.VisibleV8 && (ctx.Origin != "") {
+	if (ctx.Script != nil) && !ctx.Script.VisibleV8 && (ctx.Origin.Origin != "") {
 		offset, err := strconv.Atoi(fields[0])
 		if err != nil {
 			return fmt.Errorf("%d: invalid script offset '%s'", lineNumber, fields[0])
@@ -117,7 +117,7 @@ func (agg *FeatureUsageAggregator) IngestRecord(ctx *core.ExecutionContext, line
 		}
 
 		// Stick it in our aggregation map (counting)
-		agg.usage[UsageInfo{ctx.Origin, ctx.Script, offset, fullName, rune(op)}]++
+		agg.usage[UsageInfo{ctx.Origin.Origin, ctx.Script, offset, fullName, rune(op)}]++
 
 		// And track callsite polymorphism (we break feature tuple sets into mono/poly morphic for different aggregation queries)
 		morphKey := callsite{ctx.Script, offset}

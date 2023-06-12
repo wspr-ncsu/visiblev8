@@ -54,7 +54,8 @@ func AnnotateStream(stream io.Reader, aggCtx *AggregationContext) error {
 				}
 			case '@':
 				originString, _ := StripQuotes(fields[0])
-				ln.changeOrigin(originString)
+				originSecurityToken, _ := StripQuotes(fields[1])
+				ln.changeOrigin(originString, originSecurityToken)
 			default:
 				offset, err := strconv.Atoi(fields[0])
 				if err != nil {
