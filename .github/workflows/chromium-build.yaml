@@ -44,9 +44,22 @@ jobs:
               core.setOutput('chromeMajorVersion', chromeMajorVersion);
         - name: Diff our changes
           id: diff
-          run: |
-            GIT_DIFF_OP=$(git --no-pager  diff ${{ steps.get_release.outputs.commit }}..${{ steps.get_release.outputs.currentGitCommit }} patches builder .github)
-            echo "diff=$GIT_DIFF_OP" >> $GITHUB_OUTPUT
+          uses: actions/github-script@v6
+          env:
+            oldCommit: ${{ steps.get_release.outputs.commit }}
+            currentCommit: ${{ steps.get_release.outputs.currentGitCommit }}
+          with:
+            script: |
+              let output = '';
+
+              const options = {};
+              options.listeners = {
+                stdout: (data) => {
+                  output += data.toString();
+                }
+              };
+              await exec.exec( 'git', [ '--no-pager', 'diff', process.env.oldCommit + '..' + process.env.currentCommit, 'patches', 'builder', '.github' ], options );
+              core.setOutput('diff', btoa(output));
         - name: Should we publish ?
           id: shouldPublish
           uses: actions/github-script@v6
