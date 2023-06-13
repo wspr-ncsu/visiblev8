@@ -391,6 +391,21 @@ index b6eca3f86f..7e15adda08 100644
  }
  
  namespace {
+diff --git a/src/flags/flag-definitions.h b/src/flags/flag-definitions.h
+index 471b5d2168..1cb115ec31 100644
+--- a/src/flags/flag-definitions.h
++++ b/src/flags/flag-definitions.h
+@@ -203,6 +203,10 @@ DEFINE_BOOL(experimental, false,
+   FLAG(BOOL, bool, nam, false, cmt " (experimental)") \
+   DEFINE_IMPLICATION(nam, experimental)
+ 
++// VisibleV8
++DEFINE_STRING(vv8_log_file_path, ".", 
++              "Directory in which to dump VisibleV8 logs")
++
+ // ATTENTION: This is set to true by default in d8. But for API compatibility,
+ // it generally defaults to false.
+ DEFINE_BOOL(abort_on_contradictory_flags, false,
 diff --git a/src/init/v8.cc b/src/init/v8.cc
 index 9dad3911a4..425444bd1d 100644
 --- a/src/init/v8.cc
@@ -605,7 +620,7 @@ index 42c161dfa7..d41f4c3813 100644
    LanguageMode language_mode = static_cast<LanguageMode>(args.smi_value_at(3));
    Handle<SharedFunctionInfo> outer_info(args.at<JSFunction>(2)->shared(),
 diff --git a/src/runtime/runtime-test.cc b/src/runtime/runtime-test.cc
-index 8edc0a6c98..511be92b14 100644
+index 8edc0a6c98..64a96e992d 100644
 --- a/src/runtime/runtime-test.cc
 +++ b/src/runtime/runtime-test.cc
 @@ -2,15 +2,25 @@
@@ -653,7 +668,7 @@ index 8edc0a6c98..511be92b14 100644
  
  #ifdef V8_ENABLE_MAGLEV
  #include "src/maglev/maglev.h"
-@@ -1354,6 +1372,652 @@ RUNTIME_FUNCTION(Runtime_TraceExit) {
+@@ -1354,6 +1372,659 @@ RUNTIME_FUNCTION(Runtime_TraceExit) {
    return obj;  // return TOS
  }
  
@@ -828,7 +843,8 @@ index 8edc0a6c98..511be92b14 100644
 +
 +  // Log file name generator pattern (for log rollover on large size)
 +  int next_log;
-+  char log_name_pattern[256];
++  char *log_name_pattern;
++  int log_name_size;
 +
 +  // Small/simple "set" of seen Isolate/SID pairs (to avoid re-dumping script
 +  // source/etc. within one log)
@@ -850,22 +866,29 @@ index 8edc0a6c98..511be92b14 100644
 +    // current Thread object from V8?]
 +    char thread_name[16] = "<unknown>";
 +#if BUILDFLAG(IS_ANDROID)
++    log_name_size = 256 + 19;
++    log_name_pattern = (char *)malloc(log_name_size);
 +    if ( prctl(PR_GET_NAME, thread_name, 0, 0, 0) ) {
 +      perror("prctl");
 +    }
 +    char log_name[] = "/sdcard/Documents/vv8-%ld-%d-%d-%s.%%d.log";
-+#else
-+  if (pthread_getname_np(pthread_self(), thread_name, sizeof(thread_name))) {
-+      perror("pthread_getname_np");
-+    }
-+    char log_name[] = "vv8-%ld-%d-%d-%s.%%d.log";
-+#endif
-+    // Use thread name et al. to construct our log name pattern
-+    snprintf(log_name_pattern, sizeof log_name_pattern,
++    snprintf(log_name_pattern, log_name_size,
 +             log_name, (long)base::OS::TimeCurrentMillis(),
 +             base::OS::GetCurrentProcessId(), base::OS::GetCurrentThreadId(),
 +             thread_name);
-+
++#else
++  log_name_size = sizeof v8_flags.vv8_log_file_path + 256;
++  log_name_pattern = (char *)malloc(log_name_size);
++  if (pthread_getname_np(pthread_self(), thread_name, sizeof(thread_name))) {
++      perror("pthread_getname_np");
++    }
++    char log_name[] = "%s/vv8-%ld-%d-%d-%s.%%d.log";
++    // Use thread name et al. to construct our log name pattern
++    snprintf(log_name_pattern, log_name_size,
++             log_name, v8_flags.vv8_log_file_path, (long)base::OS::TimeCurrentMillis(),
++             base::OS::GetCurrentProcessId(), base::OS::GetCurrentThreadId(),
++             thread_name);
++#endif
 +    // And go ahead/open our next log file
 +    open_next_log_file();
 +
@@ -874,10 +897,9 @@ index 8edc0a6c98..511be92b14 100644
 +  }
 +
 +  void open_next_log_file() {
-+    char log_name[256];
-+
++    char log_name[log_name_size];
 +    if (log.is_open()) log.close();
-+    snprintf(log_name, sizeof log_name, log_name_pattern, next_log++);
++    snprintf(log_name, log_name_size, log_name_pattern, next_log++);
 +    log.open(log_name);
 +
 +    if (!log) {
