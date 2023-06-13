@@ -29,6 +29,34 @@ and the VisibleV8 logs will be available in the local directory.
 
 Alternatively, you can download Debian packages from the [releases](https://github.com/wspr-ncsu/visiblev8/releases) page and install them manually.
 
+## VV8 for Android
+
+This guide demonstrates how VisibleV8 can be used for mobile web measurements. Prebuild VisibleV8 `apk` files are available in our [artifact releases](https://github.com/wspr-ncsu/visiblev8/releases). Each instance of a website crawl will generate seperate log files per isolate. The generated files are written to the `/sdcard` directory. The following code demonstrates how ADB can be leveraged to pull the file once the crawl has finished.
+
+```python
+def chromeSequence(website):
+  phone_id = '' # identify and set the correct phone-id using 'adb devices'
+  baseCommand = "shell am start -a android.intent.action.VIEW -d"
+  adbInitCommand = "adb -s {} ".format(phone_id)
+  openChrome = adbInitCommand + f"shell am start -a android.intent.action.VIEW -d {website}"
+  # closeTabCommand = adbInitCommand + "shell input tap 484 376"
+  print("starting the chrome sequence")
+  if os.system(openChrome) != 0:
+      print("Failed openChrome")
+      return
+  else:
+      print("opened chrome successfully")
+
+def pull_log_file(website_filename):
+    pull_cmd = f"""adb pull /sdcard/{website_filename} ."""
+    print(pull_cmd)
+    os.system(pull_cmd)
+```
+
+The first function `chromeSequence` will spawn an instance of Chromium and open the website specified. The vv8 runtime will instantly start logging and writing the logs to a separate file in the `/sdcard` directory. `pull_log_file` function can be used to pull the log files out of the android file system to your local machine. 
+
+Note: The build process for Android has been simplified. Head over to `build/build_direct.sh` and set ANDROID=1 if you want to build the `apk` from scratch.
+
 ## Building VisibleV8
 (These instructions are for building VV8 on Chromium 104. Find commit hashes of other versions [here](http://omahaproxy.appspot.com/), but make sure there's a matching patchset in `patches/` in this repository.)
 
@@ -86,30 +114,3 @@ If you use *VisibleV8* in your research, consider citing our work using this **B
 * Optionally, run `$VV8/builder/tool.py -d $WD install` to create a new Docker image with the Chromium/VV8 build installed as the entry-point (for running the tests and/or building your own Puppeteer-based applications using Chromium/VV8 for instrumentation)
 
 
-## VV8 for Android
-
-Note: The build process for android has been simplified. Head over to `build/build_direct.sh` and set ANDROID=1. The following build process will produce the Chromium APK file. 
-
-This guide demonstrates how the vv8-based Chromium can be used for web measurements. The current default support compiles and builds Chromium for arm64. Each instance of a website crawl will generate seperate log files per isolate. The generated files are written to the /sdcard directory. The following code demonstrates how ADB can be leveraged to pull the file once the crawl has finished
-
-```python
-def chromeSequence(website):
-  phone_id = '' # identify and set the correct phone-id using 'adb devices'
-  baseCommand = "shell am start -a android.intent.action.VIEW -d"
-  adbInitCommand = "adb -s {} ".format(phone_id)
-  openChrome = adbInitCommand + f"shell am start -a android.intent.action.VIEW -d {website}"
-  # closeTabCommand = adbInitCommand + "shell input tap 484 376"
-  print("starting the chrome sequence")
-  if os.system(openChrome) != 0:
-      print("Failed openChrome")
-      return
-  else:
-      print("opened chrome successfully")
-
-def pull_log_file(website_filename):
-    pull_cmd = f"""adb pull /sdcard/{website_filename} ."""
-    print(pull_cmd)
-    os.system(pull_cmd)
-```
-
-The first function `chromeSequence` will spawn an instance of Chromium and open the website specified. The vv8 runtime will instantly start logging and writing the logs to a separate file in the `/sdcard` directory. `pull_log_file` function can be used to pull the log files out of the android file system to your local machine. 
