@@ -33,7 +33,8 @@ func NewFeatureUsageAggregator() (core.Aggregator, error) {
 
 // IngestRecord extracts minimal script API usage stats from each callsite record
 func (agg *FeatureUsageAggregator) IngestRecord(ctx *core.ExecutionContext, lineNumber int, op byte, fields []string) error {
-	if (ctx.Script != nil) && !ctx.Script.VisibleV8 && (ctx.Origin != "") {
+	log.Printf("Yo!")
+	if (ctx.Script != nil) && !ctx.Script.VisibleV8 && (ctx.Origin.Origin != "") {
 		var rcvr, name, fullName string
 		switch op {
 		case 'g':
@@ -73,10 +74,10 @@ func (agg *FeatureUsageAggregator) IngestRecord(ctx *core.ExecutionContext, line
 
 		// We log only IDL-normalized members
 		// Stick it in our aggregation map
-		originSet, ok := agg.usage[ctx.Origin]
+		originSet, ok := agg.usage[ctx.Origin.Origin]
 		if !ok {
 			originSet = make(map[string]bool)
-			agg.usage[ctx.Origin] = originSet
+			agg.usage[ctx.Origin.Origin] = originSet
 		}
 		originSet[fullName] = true
 	}

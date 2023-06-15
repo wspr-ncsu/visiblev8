@@ -71,7 +71,12 @@ type LogInfo struct {
 // ExecutionContext provides context to a trace record: the active script and the enforced SOP domain (if any)
 type ExecutionContext struct {
 	Script *ScriptInfo
-	Origin string
+	Origin *Origin
+}
+
+type Origin struct {
+	Origin              string
+	OriginSecurityToken string
 }
 
 // IsolateInfo tracks a V8 isolate (i.e., script namespace, for our purposes) during processing
@@ -110,5 +115,5 @@ type ScriptInfo struct {
 	EvaledBy *ScriptInfo
 
 	// Active origin at moment of creation in the logs?
-	FirstOrigin string
+	FirstOrigin *Origin
 }

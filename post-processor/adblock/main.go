@@ -60,7 +60,7 @@ func NewAdblockAggregator() (core.Aggregator, error) {
 }
 
 func (agg *adblockAggregator) IngestRecord(ctx *core.ExecutionContext, lineNumber int, op byte, fields []string) error {
-	if (ctx.Script != nil) && !ctx.Script.VisibleV8 && (ctx.Origin != "") {
+	if (ctx.Script != nil) && !ctx.Script.VisibleV8 && (ctx.Origin.Origin != "") {
 		_, ok := agg.scriptList[ctx.Script.ID]
 
 		if !ok {
@@ -88,7 +88,7 @@ func (agg *adblockAggregator) sendURLsToAdblock() error {
 	var cnt int = 0
 
 	for _, script := range agg.scriptList {
-		if script.info.URL == "" || script.info.FirstOrigin == "null" {
+		if script.info.URL == "" || script.info.FirstOrigin.Origin == "null" {
 			continue
 		}
 

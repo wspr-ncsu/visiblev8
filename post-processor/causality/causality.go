@@ -81,7 +81,7 @@ func (agg *ScriptCausalityAggregator) addInsertion(codeHash core.ScriptHash, act
 
 // IngestRecord processes a single trace record (line), looking for dynamic script causality
 func (agg *ScriptCausalityAggregator) IngestRecord(ctx *core.ExecutionContext, lineNumber int, op byte, fields []string) error {
-	if (ctx.Script != nil) && !ctx.Script.VisibleV8 && (ctx.Origin != "") {
+	if (ctx.Script != nil) && !ctx.Script.VisibleV8 && (ctx.Origin.Origin != "") {
 		var name, rcvr string
 		switch op {
 		case 's':

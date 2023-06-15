@@ -276,8 +276,8 @@ func (pctx *postgresqlContext) sqlDumpScriptInstances(sqlDb *sql.DB, ln *core.Lo
 			}
 
 			var originURLHash, scriptURLHash interface{}
-			if script.FirstOrigin != "" {
-				temp := ub.URLToHash(script.FirstOrigin)
+			if script.FirstOrigin.Origin != "" {
+				temp := ub.URLToHash(script.FirstOrigin.Origin)
 				originURLHash = temp[:]
 			}
 			if script.URL != "" {
