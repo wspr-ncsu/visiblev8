@@ -13,6 +13,8 @@ jobs:
 # Lets give ourselves 2 day to build VisibleV8 (github by default gives 6 hrs which is not enough time to build Chrome three times unless we use Google magic)
         steps:
         - uses: actions/checkout@v3
+          with:
+            fetch-depth: 0
         - name: Extract short SHA
           id: short_sha
           run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
