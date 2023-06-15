@@ -59,7 +59,8 @@ jobs:
                 }
               };
               await exec.exec( 'git', [ '--no-pager', 'diff', process.env.oldCommit + '..' + process.env.currentCommit, 'patches', 'builder', '.github' ], options );
-              core.setOutput('diff', btoa(output));
+              core.setOutput('diff', output[0] || 'empty');
+  # Hack: We send the first letter or the string 'empty' since Github runners hang if we send over the entire diff
         - name: Should we publish ?
           id: shouldPublish
           uses: actions/github-script@v6
@@ -67,7 +68,7 @@ jobs:
             GIT_DIFF: ${{ steps.diff.outputs.diff }}
           with:
             script: |
-              const shouldPublish = '${{ steps.get_release.outputs.chromeReleaseVersion }}' != '${{ steps.get_release.outputs.fullVersion }}' || '${{ steps.get_release.outputs.currentGitCommit }}' != '${{ steps.get_release.outputs.commit }}' || process.env.GIT_DIFF != '';
+              const shouldPublish = '${{ steps.get_release.outputs.chromeReleaseVersion }}' != '${{ steps.get_release.outputs.fullVersion }}' || '${{ steps.get_release.outputs.currentGitCommit }}' != '${{ steps.get_release.outputs.commit }}' || process.env.GIT_DIFF != 'empty';
               console.log(`shouldPublish: ${shouldPublish}`);
               core.setOutput('shouldPublish', shouldPublish);
         - name: Build VisibleV8
