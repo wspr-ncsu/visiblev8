@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@actions/core": "^1.10.0",
+    "node-fetch": "^2.6.11"
+  }
+}

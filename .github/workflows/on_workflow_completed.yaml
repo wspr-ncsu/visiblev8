@@ -1,0 +1,61 @@
+name: Workflow success reporter
+on:
+  workflow_run:
+    workflows: ["Build VisibleV8"]
+    types: [completed]
+permissions: read-all
+jobs:
+  main:
+    runs-on: [self-hosted, linux, workflow-finish-runner]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Wait for results
+        run: sleep 10
+      - name: Extract short SHA
+        id: short_sha
+        run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+      - uses: actions/github-script@v6
+        id: get_release
+        with:
+          script: |
+            const release = await github.rest.repos.getLatestRelease({
+              owner: 'wspr-ncsu',
+              repo: 'visiblev8'
+            });
+            const tag = release.data.tag_name;
+            const currentGitCommit = '${{ steps.short_sha.outputs.sha_short }}'
+            const [_, commit, fullVersion, majorVersion] = tag.match(/visiblev8_([0-9a-f]+)-(([0-9]+)\.[0-9.]+)/);
+            const chromeReleaseVersion = await (await fetch('https://omahaproxy.appspot.com/linux')).text();
+            const chromeMajorVersion = chromeReleaseVersion.split('.')[0];
+            console.log(`tag: ${tag}`);
+            console.log(`commit: ${commit}`);
+            console.log(`oldVersion: ${fullVersion}`);
+            console.log(`majorVersion: ${chromeMajorVersion}`);
+            console.log(`currentGitCommit: ${currentGitCommit}`);
+            console.log(`chromeReleaseVersion: ${chromeReleaseVersion}`);
+            core.setOutput('tag', tag);
+            core.setOutput('commit', commit);
+            core.setOutput('fullVersion', fullVersion);
+            core.setOutput('majorVersion', majorVersion);
+            core.setOutput('chromeReleaseVersion', chromeReleaseVersion);
+            core.setOutput('currentGitCommit', currentGitCommit);
+            core.setOutput('chromeMajorVersion', chromeMajorVersion);
+      - name: "Aggregate failures and report them to slack channel"
+        if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+        id: action_data
+        uses: ./.github/gh-result-info-reporter
+        with:
+          run_id: ${{ github.event.workflow_run.id}}
+          repo: "visiblev8"
+          owner: "wspr-ncsu"
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Send info to slack
+        if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+        uses: ./.github/send-to-slack
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK }}
+          url: ${{ steps.action_data.outputs.url }}
+          error_info: ${{ steps.action_data.outputs.error_info }}
+          chromeVersion: ${{ steps.get_release.outputs.chromeReleaseVersion }}
+          currentGitCommit: ${{ steps.get_release.outputs.currentGitCommit }}

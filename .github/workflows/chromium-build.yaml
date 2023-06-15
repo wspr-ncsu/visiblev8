@@ -1,18 +1,18 @@
+name: Build VisibleV8
 on:
     push:
       branches:
         - 'master'
     schedule:
       - cron: '0 0 * * *'
+    workflow_dispatch:
 jobs:
     build_vv8:
-        runs-on: self-hosted
+        runs-on: [self-hosted, vv8-builder]
         timeout-minutes: 2880
 # Lets give ourselves 2 day to build VisibleV8 (github by default gives 6 hrs which is not enough time to build Chrome three times unless we use Google magic)
         steps:
         - uses: actions/checkout@v3
-          with:
-            clean: false
         - name: Extract short SHA
           id: short_sha
           run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
@@ -64,7 +64,7 @@ jobs:
           id: shouldPublish
           uses: actions/github-script@v6
           env:
-            GITHUB_DIFF: ${{ steps.diff.outputs.diff }}
+            GIT_DIFF: ${{ steps.diff.outputs.diff }}
           with:
             script: |
               const shouldPublish = '${{ steps.get_release.outputs.chromeReleaseVersion }}' != '${{ steps.get_release.outputs.fullVersion }}' || '${{ steps.get_release.outputs.currentGitCommit }}' != '${{ steps.get_release.outputs.commit }}' || process.env.GIT_DIFF != '';
@@ -156,10 +156,6 @@ jobs:
           if: steps.shouldPublish.outputs.shouldPublish == 'true' && success()
           run: |
             curl -X POST -H 'Content-type: application/json' --data '{"text":"VisibleV8 build '${{ steps.get_release.outputs.currentGitCommit }}' for Chromium version '${{ steps.get_release.outputs.chromeReleaseVersion }}' has been successful!"}' ${{ secrets.SLACK_WEBHOOK  }}
-        - name: Notify slack that the build failed
-          if: failure()
-          run: |
-            curl -X POST -H 'Content-type: application/json' --data '{"text":"VisibleV8 build '${{ steps.get_release.outputs.currentGitCommit }}' for Chromium version '${{ steps.get_release.outputs.chromeReleaseVersion }}' failed. Check the logs for github action ${{ github.run_id }} for errors."}' ${{ secrets.SLACK_WEBHOOK  }}
         - name: Cleaning up docker environment
           if: steps.shouldPublish.outputs.shouldPublish == 'true' && ( success() || failure() )
           run: |
@@ -169,7 +165,7 @@ jobs:
           run: |
             rm -rf ./builder/visiblev8_*-*.tar.gz
         - name: Clean up everything
-          if: steps.shouldPublish.outputs.shouldPublish == 'true' && ( success() || failure() )
+          if: steps.shouldPublish.outputs.shouldPublish == 'true' && always()
           uses: docker://ubuntu:latest
           with:
             entrypoint: /usr/bin/rm
