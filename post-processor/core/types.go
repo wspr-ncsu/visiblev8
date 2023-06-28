@@ -36,6 +36,7 @@ type AggregationContext struct {
 	Ln           *LogInfo           // actual context structure
 	MongoDb      *mongo.Database    // shared MongoDB connection (may be nil)
 	SQLDb        *sql.DB            // shared PG connection (may be nil)
+	RootDomain   string             // if present, used to provide the root domain of the submission (only used by causality right now)
 }
 
 // A LogInfo tracks all essential context information for a VV8 log under processing

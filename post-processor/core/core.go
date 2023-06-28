@@ -305,7 +305,10 @@ func (ln *LogInfo) IngestStream(stream io.Reader, aggs ...Aggregator) error {
 				}
 			case '@':
 				originString, _ := StripQuotes(fields[0])
-				originSecurityToken, _ := StripQuotes(fields[1])
+				originSecurityToken := "" // If no origin token is provided, assume it's empty (this is possible for cases for chrome internal JS during startup)
+				if len(fields) > 1 {
+					originSecurityToken, _ = StripQuotes(fields[1])
+				}
 				ln.changeOrigin(originString, originSecurityToken)
 			default:
 				for _, agg := range aggs {
