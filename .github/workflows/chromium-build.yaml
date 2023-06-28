@@ -70,7 +70,7 @@ jobs:
             GIT_DIFF: ${{ steps.diff.outputs.diff }}
           with:
             script: |
-              const shouldPublish = '${{ steps.get_release.outputs.chromeReleaseVersion }}' != '${{ steps.get_release.outputs.fullVersion }}' || '${{ steps.get_release.outputs.currentGitCommit }}' != '${{ steps.get_release.outputs.commit }}' || process.env.GIT_DIFF != 'empty';
+              const shouldPublish = '${{ steps.get_release.outputs.chromeReleaseVersion }}' != '${{ steps.get_release.outputs.fullVersion }}' || '${{ steps.get_release.outputs.currentGitCommit }}' != '${{ steps.get_release.outputs.commit }}' && process.env.GIT_DIFF != 'empty';
               console.log(`shouldPublish: ${shouldPublish}`);
               core.setOutput('shouldPublish', shouldPublish);
         - name: Build VisibleV8
