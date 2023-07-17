@@ -26,6 +26,7 @@ import (
 	"github.ncsu.edu/jjuecks/vv8-post-processor/features"
 	"github.ncsu.edu/jjuecks/vv8-post-processor/flow"
 	"github.ncsu.edu/jjuecks/vv8-post-processor/fptp"
+	"github.ncsu.edu/jjuecks/vv8-post-processor/idl_apis"
 	"github.ncsu.edu/jjuecks/vv8-post-processor/mega"
 	"github.ncsu.edu/jjuecks/vv8-post-processor/micro"
 )
@@ -50,6 +51,7 @@ func nullCtor() (core.Aggregator, error) {
 
 // acceptedOutputFormats is the master map of supported aggregators and their short-names used by the CLI
 var acceptedOutputFormats = map[string]formatAggregator{
+	"idlapis":           {"idlApis", idl_apis.NewAggregator},
 	"adblock":           {"Adblock", adblock.NewAdblockAggregator},
 	"fptp":              {"FirstPartyToThirdParty", fptp.NewFptpAggregator},
 	"callargs":          {"CallArguments", callargs.NewCreateCallArgsAggregator},
