@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"io"
 	"log"
+	"net/url"
 	"os"
 	"os/exec"
 
@@ -92,9 +93,17 @@ func (agg *adblockAggregator) sendURLsToAdblock() error {
 			continue
 		}
 
+		origin_url, err := url.Parse(script.info.FirstOrigin.Origin)
+
+		if err != nil {
+			return err
+		}
+
+		origin := origin_url.Hostname()
+
 		jstreamAdblock.Encode(core.JSONObject{
 			"url":    script.info.URL,
-			"origin": script.info.FirstOrigin,
+			"origin": origin,
 		})
 		cnt++
 	}
