@@ -134,7 +134,7 @@ func (agg *flowAggregator) DumpToPostgresql(ctx *core.AggregationContext, sqlDb 
 			script.info.URL,
 			evaledById,
 			pq.Array(script.APIs),
-			script.info.FirstOrigin)
+			script.info.FirstOrigin.Origin)
 
 		if err != nil {
 			txn.Rollback()
