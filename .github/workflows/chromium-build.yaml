@@ -29,7 +29,7 @@ jobs:
               const tag = release.data.tag_name;
               const currentGitCommit = '${{ steps.short_sha.outputs.sha_short }}'
               const [_, commit, fullVersion, majorVersion] = tag.match(/visiblev8_([0-9a-f]+)-(([0-9]+)\.[0-9.]+)/);
-              const chromeReleaseVersion = await (await fetch('https://omahaproxy.appspot.com/linux')).text();
+              const chromeReleaseVersion = (await (await fetch('https://chromiumdash.appspot.com/fetch_releases?channel=Stable&platform=Linux&num=1&offset=0')).json())[0]['version'];
               const chromeMajorVersion = chromeReleaseVersion.split('.')[0];
               console.log(`tag: ${tag}`);
               console.log(`commit: ${commit}`);
