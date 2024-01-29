@@ -33,7 +33,6 @@ func NewFeatureUsageAggregator() (core.Aggregator, error) {
 
 // IngestRecord extracts minimal script API usage stats from each callsite record
 func (agg *FeatureUsageAggregator) IngestRecord(ctx *core.ExecutionContext, lineNumber int, op byte, fields []string) error {
-	log.Printf("Yo!")
 	if (ctx.Script != nil) && !ctx.Script.VisibleV8 && (ctx.Origin.Origin != "") {
 		var rcvr, name, fullName string
 		switch op {
