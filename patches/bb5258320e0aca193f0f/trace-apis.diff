@@ -1,5 +1,5 @@
 diff --git a/BUILD.gn b/BUILD.gn
-index 5cda664fdd..3ab94e7f6f 100644
+index a69e7b2edb..20de099f19 100644
 --- a/BUILD.gn
 +++ b/BUILD.gn
 @@ -250,8 +250,8 @@ declare_args() {
@@ -23,7 +23,7 @@ index 5cda664fdd..3ab94e7f6f 100644
  }
  
  # Derived defaults.
-@@ -931,6 +934,10 @@ config("cppgc_header_features") {
+@@ -936,6 +939,10 @@ config("cppgc_header_features") {
    } else {
      defines = enabled_external_cppgc_defines
    }
@@ -161,10 +161,10 @@ index 5ed70c81c5..1fa52bef5f 100644
        objectJSReceiver, name, receiver, SmiConstant(kReturnUndefined));
  }
 diff --git a/src/compiler/js-call-reducer.cc b/src/compiler/js-call-reducer.cc
-index b6eca3f86f..7e15adda08 100644
+index 64eebd4bad..43924784d2 100644
 --- a/src/compiler/js-call-reducer.cc
 +++ b/src/compiler/js-call-reducer.cc
-@@ -3708,224 +3708,8 @@ FastApiCallFunctionVector CanOptimizeFastCall(
+@@ -3712,224 +3712,8 @@ FastApiCallFunctionVector CanOptimizeFastCall(
  
  Reduction JSCallReducer::ReduceCallApiFunction(Node* node,
                                                 SharedFunctionInfoRef shared) {
@@ -406,10 +406,10 @@ index 9dad3911a4..425444bd1d 100644
  }
  
 diff --git a/src/interpreter/bytecode-generator.cc b/src/interpreter/bytecode-generator.cc
-index 139ed00b4b..bffe743099 100644
+index 2e504491d6..5b5d5cad1e 100644
 --- a/src/interpreter/bytecode-generator.cc
 +++ b/src/interpreter/bytecode-generator.cc
-@@ -4863,6 +4863,36 @@ void BytecodeGenerator::VisitAssignment(Assignment* expr) {
+@@ -4875,6 +4875,36 @@ void BytecodeGenerator::VisitAssignment(Assignment* expr) {
  
    VisitForAccumulatorValue(expr->value());
  
@@ -446,7 +446,7 @@ index 139ed00b4b..bffe743099 100644
    builder()->SetExpressionPosition(expr);
    BuildAssignment(lhs_data, expr->op(), expr->lookup_hoisting_mode());
  }
-@@ -4959,6 +4989,36 @@ void BytecodeGenerator::VisitCompoundAssignment(CompoundAssignment* expr) {
+@@ -4971,6 +5001,36 @@ void BytecodeGenerator::VisitCompoundAssignment(CompoundAssignment* expr) {
      VisitForAccumulatorValue(expr->value());
      builder()->BinaryOperation(binop->op(), old_value, feedback_index(slot));
    }
@@ -483,7 +483,7 @@ index 139ed00b4b..bffe743099 100644
    builder()->SetExpressionPosition(expr);
  
    BuildAssignment(lhs_data, expr->op(), expr->lookup_hoisting_mode());
-@@ -5404,6 +5464,21 @@ void BytecodeGenerator::VisitPropertyLoad(Register obj, Property* property) {
+@@ -5416,6 +5476,21 @@ void BytecodeGenerator::VisitPropertyLoad(Register obj, Property* property) {
      case NON_PROPERTY:
        UNREACHABLE();
      case NAMED_PROPERTY: {
@@ -505,7 +505,7 @@ index 139ed00b4b..bffe743099 100644
        builder()->SetExpressionPosition(property);
        const AstRawString* name =
            property->key()->AsLiteral()->AsRawPropertyName();
-@@ -5411,7 +5486,29 @@ void BytecodeGenerator::VisitPropertyLoad(Register obj, Property* property) {
+@@ -5423,7 +5498,29 @@ void BytecodeGenerator::VisitPropertyLoad(Register obj, Property* property) {
        break;
      }
      case KEYED_PROPERTY: {
@@ -535,7 +535,7 @@ index 139ed00b4b..bffe743099 100644
        builder()->SetExpressionPosition(property);
        builder()->LoadKeyedProperty(
            obj, feedback_index(feedback_spec()->AddKeyedLoadICSlot()));
-@@ -5729,6 +5826,7 @@ void BytecodeGenerator::VisitCall(Call* expr) {
+@@ -5741,6 +5838,7 @@ void BytecodeGenerator::VisitCall(Call* expr) {
    Expression* callee_expr = expr->expression();
    Call::CallType call_type = expr->GetCallType();
  
@@ -543,7 +543,7 @@ index 139ed00b4b..bffe743099 100644
    if (call_type == Call::SUPER_CALL) {
      return VisitCallSuper(expr);
    }
-@@ -6456,6 +6554,32 @@ void BytecodeGenerator::VisitCountOperation(CountOperation* expr) {
+@@ -6468,6 +6566,32 @@ void BytecodeGenerator::VisitCountOperation(CountOperation* expr) {
    // Perform +1/-1 operation.
    builder()->UnaryOperation(expr->op(), feedback_index(count_slot));
  
@@ -576,8 +576,146 @@ index 139ed00b4b..bffe743099 100644
    // Store the value.
    builder()->SetExpressionPosition(expr);
    switch (assign_type) {
+diff --git a/src/objects/objects-inl.h b/src/objects/objects-inl.h
+index 9dd9e5b899..de7ea6b56f 100644
+--- a/src/objects/objects-inl.h
++++ b/src/objects/objects-inl.h
+@@ -1160,6 +1160,15 @@ MaybeHandle<Object> Object::GetPropertyOrElement(Isolate* isolate,
+   return GetProperty(&it);
+ }
+ 
++// VisibleV8
++MaybeHandle<Object> Object::VV8GetPropertyOrElementWithNoSideEffects(Isolate* isolate,
++                                                 Handle<Object> object,
++                                                 Handle<Name> name) {
++  PropertyKey key(isolate, name);
++  LookupIterator it(isolate, object, key);
++  return VV8GetPropertyNoSideEffects(&it);
++}
++
+ MaybeHandle<Object> Object::SetPropertyOrElement(
+     Isolate* isolate, Handle<Object> object, Handle<Name> name,
+     Handle<Object> value, Maybe<ShouldThrow> should_throw,
+diff --git a/src/objects/objects.cc b/src/objects/objects.cc
+index 9e2af7a13e..e0608f1860 100644
+--- a/src/objects/objects.cc
++++ b/src/objects/objects.cc
+@@ -1138,6 +1138,88 @@ MaybeHandle<Object> Object::GetLengthFromArrayLike(Isolate* isolate,
+   return Object::ToLength(isolate, val);
+ }
+ 
++// VisibleV8
++// static
++MaybeHandle<Object> Object::VV8GetPropertyNoSideEffects(LookupIterator* it,
++                                        bool is_global_reference) {
++  for (; it->IsFound(); it->Next()) {
++    switch (it->state()) {
++      case LookupIterator::NOT_FOUND:
++      case LookupIterator::TRANSITION:
++        UNREACHABLE();
++      case LookupIterator::JSPROXY: {
++        bool was_found;
++        Handle<Object> receiver = it->GetReceiver();
++        // In case of global IC, the receiver is the global object. Replace by
++        // the global proxy.
++        if (receiver->IsJSGlobalObject()) {
++          receiver = handle(JSGlobalObject::cast(*receiver).global_proxy(),
++                            it->isolate());
++        }
++        if (is_global_reference) {
++          Maybe<bool> maybe = JSProxy::HasProperty(
++              it->isolate(), it->GetHolder<JSProxy>(), it->GetName());
++          if (maybe.IsNothing()) return MaybeHandle<Object>();
++          if (!maybe.FromJust()) {
++            it->NotFound();
++            return it->isolate()->factory()->undefined_value();
++          }
++        }
++        MaybeHandle<Object> result =
++            JSProxy::GetProperty(it->isolate(), it->GetHolder<JSProxy>(),
++                                 it->GetName(), receiver, &was_found);
++        if (!was_found && !is_global_reference) it->NotFound();
++        return result;
++      }
++      case LookupIterator::WASM_OBJECT:
++        return it->isolate()->factory()->undefined_value();
++      case LookupIterator::INTERCEPTOR: {
++        bool done;
++        Handle<Object> result;
++        ASSIGN_RETURN_ON_EXCEPTION(
++            it->isolate(), result,
++            JSObject::GetPropertyWithInterceptor(it, &done), Object);
++        if (done) return result;
++        break;
++      }
++      case LookupIterator::ACCESS_CHECK:
++        if (it->HasAccess()) break;
++        return JSObject::GetPropertyWithFailedAccessCheck(it);
++      case LookupIterator::ACCESSOR:
++        return it->isolate()->factory()->undefined_value();
++      case LookupIterator::INTEGER_INDEXED_EXOTIC:
++        return it->isolate()->factory()->undefined_value();
++      case LookupIterator::DATA:
++        return it->GetDataValue();
++    }
++  }
++
++  if (it->IsPrivateName()) {
++    Handle<Symbol> private_symbol = Handle<Symbol>::cast(it->name());
++    Handle<String> name_string(String::cast(private_symbol->description()),
++                               it->isolate());
++    if (private_symbol->is_private_brand()) {
++      Handle<String> class_name =
++          (name_string->length() == 0)
++              ? it->isolate()->factory()->anonymous_string()
++              : name_string;
++      THROW_NEW_ERROR(
++          it->isolate(),
++          NewTypeError(MessageTemplate::kInvalidPrivateBrandInstance,
++                       class_name),
++          Object);
++    }
++    THROW_NEW_ERROR(
++        it->isolate(),
++        NewTypeError(MessageTemplate::kInvalidPrivateMemberRead, name_string),
++        Object);
++  }
++
++  return it->isolate()->factory()->undefined_value();
++}
++
++// end VisibleV8
++
+ // static
+ MaybeHandle<Object> Object::GetProperty(LookupIterator* it,
+                                         bool is_global_reference) {
+diff --git a/src/objects/objects.h b/src/objects/objects.h
+index d278311d74..5dcdd4d939 100644
+--- a/src/objects/objects.h
++++ b/src/objects/objects.h
+@@ -517,6 +517,10 @@ class Object : public TaggedImpl<HeapObjectReferenceType::STRONG, Address> {
+   V8_EXPORT_PRIVATE V8_WARN_UNUSED_RESULT static MaybeHandle<Object>
+   GetProperty(LookupIterator* it, bool is_global_reference = false);
+ 
++  // VisibleV8
++  V8_EXPORT_PRIVATE V8_WARN_UNUSED_RESULT static MaybeHandle<Object>
++  VV8GetPropertyNoSideEffects(LookupIterator* it, bool is_global_reference = false);
++
+   // ES6 [[Set]] (when passed kDontThrow)
+   // Invariants for this and related functions (unless stated otherwise):
+   // 1) When the result is Nothing, an exception is pending.
+@@ -567,6 +571,9 @@ class Object : public TaggedImpl<HeapObjectReferenceType::STRONG, Address> {
+ 
+   V8_WARN_UNUSED_RESULT static inline MaybeHandle<Object> GetPropertyOrElement(
+       Isolate* isolate, Handle<Object> object, Handle<Name> name);
++  // VisibleV8
++  V8_WARN_UNUSED_RESULT static inline MaybeHandle<Object> VV8GetPropertyOrElementWithNoSideEffects(
++      Isolate* isolate, Handle<Object> object, Handle<Name> name);
+   V8_WARN_UNUSED_RESULT static inline MaybeHandle<Object> GetPropertyOrElement(
+       Handle<Object> receiver, Handle<Name> name, Handle<JSReceiver> holder);
+   V8_WARN_UNUSED_RESULT static inline MaybeHandle<Object> GetProperty(
 diff --git a/src/runtime/runtime-compiler.cc b/src/runtime/runtime-compiler.cc
-index 42c161dfa7..d41f4c3813 100644
+index 79c8137286..c927ef54c7 100644
 --- a/src/runtime/runtime-compiler.cc
 +++ b/src/runtime/runtime-compiler.cc
 @@ -18,7 +18,10 @@
@@ -592,7 +730,7 @@ index 42c161dfa7..d41f4c3813 100644
  namespace {
  void LogExecution(Isolate* isolate, Handle<JSFunction> function) {
    DCHECK(v8_flags.log_function_events);
-@@ -677,6 +680,11 @@ RUNTIME_FUNCTION(Runtime_ResolvePossiblyDirectEval) {
+@@ -636,6 +639,11 @@ RUNTIME_FUNCTION(Runtime_ResolvePossiblyDirectEval) {
      return *callee;
    }
  
@@ -605,10 +743,10 @@ index 42c161dfa7..d41f4c3813 100644
    LanguageMode language_mode = static_cast<LanguageMode>(args.smi_value_at(3));
    Handle<SharedFunctionInfo> outer_info(args.at<JSFunction>(2)->shared(),
 diff --git a/src/runtime/runtime-test.cc b/src/runtime/runtime-test.cc
-index 8edc0a6c98..58fd8cf508 100644
+index 6d674c4c57..d3afa65f99 100644
 --- a/src/runtime/runtime-test.cc
 +++ b/src/runtime/runtime-test.cc
-@@ -2,15 +2,25 @@
+@@ -2,15 +2,26 @@
  // Use of this source code is governed by a BSD-style license that can be
  // found in the LICENSE file.
  
@@ -624,6 +762,7 @@ index 8edc0a6c98..58fd8cf508 100644
 +#include <string>
 +#include <strstream>
 +#include <vector>
++#include <mutex>
  
 +#include "build/build_config.h"
  #include "include/v8-function.h"
@@ -634,7 +773,7 @@ index 8edc0a6c98..58fd8cf508 100644
  #include "src/codegen/compiler.h"
  #include "src/codegen/pending-optimization-table.h"
  #include "src/compiler-dispatcher/lazy-compile-dispatcher.h"
-@@ -35,10 +45,18 @@
+@@ -35,10 +46,18 @@
  #include "src/objects/js-atomics-synchronization-inl.h"
  #include "src/objects/js-function-inl.h"
  #include "src/objects/js-regexp-inl.h"
@@ -653,7 +792,7 @@ index 8edc0a6c98..58fd8cf508 100644
  
  #ifdef V8_ENABLE_MAGLEV
  #include "src/maglev/maglev.h"
-@@ -1354,6 +1372,660 @@ RUNTIME_FUNCTION(Runtime_TraceExit) {
+@@ -1393,6 +1412,657 @@ RUNTIME_FUNCTION(Runtime_TraceExit) {
    return obj;  // return TOS
  }
  
@@ -788,7 +927,7 @@ index 8edc0a6c98..58fd8cf508 100644
 +          myPrintUC16(*key, out, 0, max_len);
 +          out << "\\:";
 +          do {
-+            if (!(Object::GetPropertyOrElement(isolate, rcvr, key))
++            if (!(Object::VV8GetPropertyOrElementWithNoSideEffects(isolate, rcvr, key))
 +                     .ToHandle(&property)) {
 +              DCHECK((isolate)->has_pending_exception());
 +              return;
@@ -817,7 +956,6 @@ index 8edc0a6c98..58fd8cf508 100644
 +  // Since looking up window.origin can trigger recursion, we need to know when
 +  // to ignore API calls
 +  int rcount;
-+
 +  // std filestream used to log records to disk for this thread
 +  std::ofstream log;
 +
@@ -1155,7 +1293,6 @@ index 8edc0a6c98..58fd8cf508 100644
 +    // Check to see if our log has grown too large; rollover...
 +    if (out().tellp() > 1000 * 1000 * 1000) {  // Max 1GB per log file
 +      out() << std::flush;
-+
 +      // Trap I/O errors as fatal
 +      if (!out()) {
 +        perror("log output");
@@ -1290,7 +1427,6 @@ index 8edc0a6c98..58fd8cf508 100644
 +    if (!it.done()) {
 +      call_site = it.frame()->position();
 +    }
-+
 +    if (is_constructor) {
 +      vlog.out() << 'n' << call_site << ':';
 +      visv8_to_string(isolate, vlog.out(), func);
@@ -1315,10 +1451,10 @@ index 8edc0a6c98..58fd8cf508 100644
    SealHandleScope shs(isolate);
    DCHECK_EQ(2, args.length());
 diff --git a/src/runtime/runtime.h b/src/runtime/runtime.h
-index ab3ecfac97..3181aeb5c9 100644
+index e11c08398c..5699857c59 100644
 --- a/src/runtime/runtime.h
 +++ b/src/runtime/runtime.h
-@@ -598,6 +598,9 @@ namespace internal {
+@@ -599,6 +599,9 @@ namespace internal {
    F(TakeHeapSnapshot, -1, 1)                  \
    F(TraceEnter, 0, 1)                         \
    F(TraceExit, 1, 1)                          \
