@@ -15,7 +15,7 @@ LAST_RELEASE=$(echo $RELEASES | jq -r .[0].tag_name | cut -d{ -f1)
 echo "Last VisibleV8 build is:  $LAST_RELEASE"
 
 get_latest_stable_version() {
-    curl -s https://omahaproxy.appspot.com/linux
+    curl -s 'https://chromiumdash.appspot.com/fetch_releases?channel=Stable&platform=Linux&num=1&offset=0' | jq -r '.[0].version'
 }
 
 VERSION="$(get_latest_stable_version)"
