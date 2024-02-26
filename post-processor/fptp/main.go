@@ -150,7 +150,7 @@ func (agg *fptpAggregator) DumpToPostgresql(ctx *core.AggregationContext, sqlDb 
 		originProperty, err := agg.accessEntityPropertyMap(originURLOrigin)
 		if err != nil {
 			originProperty = &EntityProperty{
-				DisplayName: scriptURLOrigin,
+				DisplayName: originURLOrigin,
 				Tracking:    0.0,
 			}
 			agg.eMap.EntityPropertyMap[originURLOrigin] = originProperty
@@ -220,7 +220,7 @@ func (agg *fptpAggregator) DumpToStream(ctx *core.AggregationContext, stream io.
 		originProperty, err := agg.accessEntityPropertyMap(originURLOrigin)
 		if err != nil {
 			originProperty = &EntityProperty{
-				DisplayName: scriptURLOrigin,
+				DisplayName: originURLOrigin,
 				Tracking:    0.0,
 			}
 			agg.eMap.EntityPropertyMap[originURLOrigin] = originProperty
