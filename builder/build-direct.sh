@@ -36,7 +36,7 @@ get_latest_chrome_sandbox_patch_file() {
 }
 
 get_latest_stable_version() {
-    curl -s https://omahaproxy.appspot.com/linux
+    curl -s 'https://chromiumdash.appspot.com/fetch_releases?channel=Stable&platform=Linux&num=1&offset=0' | jq -r '.[0].version'
 }
 
 VV8="$(pwd)/visiblev8"
@@ -78,7 +78,6 @@ echo $LAST_V8_PATCH_FILE
 
 get_latest_chrome_sandbox_patch_file
 echo $LAST_CHROME_SANDBOX_PATCH_FILE
-
 # Git tweaks
 git config --global --add safe.directory '*'
 export GIT_CACHE_PATH="/build/.git_cache"
@@ -105,13 +104,26 @@ solutions = [
 target_os = [ 'android' ]
 EOL
 cd $WD/src
+
+echo "Using $LAST_CHROME_SANDBOX_PATCH_FILE to patch Chrome's sandbox"
+# "Run `docker commit $(docker ps -q -l) patch-failed` to analyze the failed patches."
+patch -p1 <$LAST_CHROME_SANDBOX_PATCH_FILE || { echo "Patching Chromium $VERSION with $LAST_CHROME_SANDBOX_PATCH_FILE failed. Exiting!" ; exit 42; }
+
 ./build/install-build-deps.sh --android --no-prompt
 ./build/linux/sysroot_scripts/install-sysroot.py --arch=arm64
 gclient sync -D --force --reset --with_branch_heads # --shallow --no-history
 
+### Apply VisibleV8 patches
+cd $WD/src/v8
+echo "Using $LAST_V8_PATCH_FILE to patch V8"
+# "Run `docker commit $(docker ps -q -l) patch-failed` to analyze the failed patches."
+patch -p1 <$LAST_V8_PATCH_FILE || { echo "Patching Chromium $VERSION with $LAST_V8_PATCH_FILE failed. Exiting!" ; exit 42; }
+
 ### Build config
 [ ! -d $WD/src/out/Release ] && mkdir -p $WD/src/out/Release
 # we need to provide the correct build args to enable targets like chrome/installer/linux:stable_deb
+
+cd $WD/src
 
 if [ "$DEBUG" -eq "0" ]; then
     # production args
@@ -150,16 +162,6 @@ EOL
 fi
 gn gen out/Release
 
-### Apply VisibleV8 patches
-cd $WD/src/v8
-echo "Using $LAST_V8_PATCH_FILE to patch V8"
-# "Run `docker commit $(docker ps -q -l) patch-failed` to analyze the failed patches."
-patch -p1 <$LAST_V8_PATCH_FILE || { echo "Patching Chromium $VERSION with $LAST_V8_PATCH_FILE failed. Exiting!" ; exit 42; }
-
-cd $WD/src
-echo "Using $LAST_CHROME_SANDBOX_PATCH_FILE to patch Chrome's sandbox"
-# "Run `docker commit $(docker ps -q -l) patch-failed` to analyze the failed patches."
-patch -p1 <$LAST_CHROME_SANDBOX_PATCH_FILE || { echo "Patching Chromium $VERSION with $LAST_CHROME_SANDBOX_PATCH_FILE failed. Exiting!" ; exit 42; }
 # building
 autoninja -C out/Release chrome d8 wasm_api_tests cctest inspector-test v8_unittests v8_mjsunit v8_shell icudtl.dat snapshot_blob.bin web_idl_database chrome/installer/linux:stable_deb
 
