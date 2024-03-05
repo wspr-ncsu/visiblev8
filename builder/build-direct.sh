@@ -218,6 +218,8 @@ EOL
     autoninja -C out/Android chrome_public_apk
 
     cp -r out/Android/apks/ChromePublic.apk /artifacts/$VERSION/ChromePublic-vv8-$VERSION.apk
+    
+    chmod ugo+r /artifacts/$VERSION/ChromePublic-vv8-$VERSION.apk
 
     rm -rf out/Android
 fi
