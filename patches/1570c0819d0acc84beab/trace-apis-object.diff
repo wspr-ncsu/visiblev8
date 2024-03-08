@@ -780,7 +780,7 @@ index 80658a011a2..664ba3132c7 100644
    LanguageMode language_mode = static_cast<LanguageMode>(args.smi_value_at(3));
    Handle<SharedFunctionInfo> outer_info(args.at<JSFunction>(2)->shared(),
 diff --git a/src/runtime/runtime-test.cc b/src/runtime/runtime-test.cc
-index b7172db9768..eeb539727a7 100644
+index b7172db9768..c8e0a0895f0 100644
 --- a/src/runtime/runtime-test.cc
 +++ b/src/runtime/runtime-test.cc
 @@ -2,16 +2,30 @@
@@ -834,7 +834,7 @@ index b7172db9768..eeb539727a7 100644
  
  #ifdef V8_ENABLE_MAGLEV
  #include "src/maglev/maglev.h"
-@@ -1565,6 +1587,676 @@ RUNTIME_FUNCTION(Runtime_TraceExit) {
+@@ -1565,6 +1587,675 @@ RUNTIME_FUNCTION(Runtime_TraceExit) {
    return obj;  // return TOS
  }
  
@@ -1177,14 +1177,13 @@ index b7172db9768..eeb539727a7 100644
 +    origin_url_scratch.seekp(0);
 +    origin_url_scratch.clear();
 +    print_origin(isolate, origin_url_scratch);
-+    origin_url_scratch << std::ends;
 +
 +    // Now, compare with our cached copy
 +    if (strcmp(origin_url_scratch.str().c_str(), last_origin_url.str().c_str()) != 0) {
 +      // Change!  Replace our cached copy and log it
 +      last_origin_url.seekp(0);
 +      last_origin_url.clear();
-+      last_origin_url << origin_url_scratch.str() << std::ends;
++      last_origin_url << origin_url_scratch.str();
 +      log << last_origin_url.str();
 +    }
 +  }
