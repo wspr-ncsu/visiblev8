@@ -1,6 +1,7 @@
 #!/bin/bash
 set -ex
 
+# TODO: set DEBUG=0, my changes
 DEBUG=0
 ANDROID=0
 ARM=0
@@ -154,12 +155,12 @@ gn gen out/Release
 cd $WD/src/v8
 echo "Using $LAST_V8_PATCH_FILE to patch V8"
 # "Run `docker commit $(docker ps -q -l) patch-failed` to analyze the failed patches."
-patch -p1 <$LAST_V8_PATCH_FILE || { echo "Patching Chromium $VERSION with $LAST_V8_PATCH_FILE failed. Exiting!" ; exit 42; }
+# patch -p1 <$LAST_V8_PATCH_FILE || { echo "Patching Chromium $VERSION with $LAST_V8_PATCH_FILE failed. Exiting!" ; exit 42; }
 
 cd $WD/src
 echo "Using $LAST_CHROME_SANDBOX_PATCH_FILE to patch Chrome's sandbox"
 # "Run `docker commit $(docker ps -q -l) patch-failed` to analyze the failed patches."
-patch -p1 <$LAST_CHROME_SANDBOX_PATCH_FILE || { echo "Patching Chromium $VERSION with $LAST_CHROME_SANDBOX_PATCH_FILE failed. Exiting!" ; exit 42; }
+# patch -p1 <$LAST_CHROME_SANDBOX_PATCH_FILE || { echo "Patching Chromium $VERSION with $LAST_CHROME_SANDBOX_PATCH_FILE failed. Exiting!" ; exit 42; }
 # building
 autoninja -C out/Release chrome d8 wasm_api_tests cctest inspector-test v8_unittests v8_mjsunit v8_shell icudtl.dat snapshot_blob.bin web_idl_database chrome/installer/linux:stable_deb
 
@@ -183,7 +184,8 @@ chmod +rw -R /artifacts
     && $VV8/builder/resources/build/dump_idl.py "$WD/src" > "/artifacts/$VERSION/idldata.json" \
     || python3 $VV8/builder/resources/build/visiblev8_idl_generator.py --chrome-root "$WD/src" > "/artifacts/$VERSION/idldata.json"
 
-rm -rf out/Release
+# TODO: uncomment next line, my changes
+# rm -rf out/Release
 
 # Build and run V8 tests directly
 # ./v8/tools/dev/gm.py x64.release.check

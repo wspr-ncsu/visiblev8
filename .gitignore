@@ -4,3 +4,5 @@ builder/artifacts*
 builder/vv82dockerhub_password
 builder/github_token
 builder/.env
+builder/depot_tools
+builder/visiblev8
