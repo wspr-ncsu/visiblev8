@@ -185,7 +185,8 @@ chmod +rw -R /artifacts
     && $VV8/builder/resources/build/dump_idl.py "$WD/src" > "/artifacts/$VERSION/idldata.json" \
     || python3 $VV8/builder/resources/build/visiblev8_idl_generator.py --chrome-root "$WD/src" > "/artifacts/$VERSION/idldata.json"
 
-rm -rf out/Release
+# TODO: uncomment next line to delete stuff?
+# rm -rf out/Release
 
 # Build and run V8 tests directly
 # ./v8/tools/dev/gm.py x64.release.check
