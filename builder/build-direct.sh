@@ -1,7 +1,7 @@
 #!/bin/bash
 set -ex
 
-DEBUG=0
+DEBUG=1
 ANDROID=0
 ARM=0
 
@@ -185,7 +185,8 @@ chmod +rw -R /artifacts
     && $VV8/builder/resources/build/dump_idl.py "$WD/src" > "/artifacts/$VERSION/idldata.json" \
     || python3 $VV8/builder/resources/build/visiblev8_idl_generator.py --chrome-root "$WD/src" > "/artifacts/$VERSION/idldata.json"
 
-rm -rf out/Release
+# we keep the version since we will use this later locally
+# rm -rf out/Release
 
 # Build and run V8 tests directly
 # ./v8/tools/dev/gm.py x64.release.check
