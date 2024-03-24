@@ -1,0 +1,2 @@
+Chrome 123.0.6312.58
+Commit 6b4b19e9dfbb93aa414dc045bd445287977d8d7a
