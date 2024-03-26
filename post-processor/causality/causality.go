@@ -204,6 +204,13 @@ func (agg *ScriptCausalityAggregator) IngestRecord(ctx *core.ExecutionContext, l
 					log.Printf("%d, iframe.srcdoc(%s)...wat??", lineNumber, html)
 				}
 			}
+		} else if (op == 's') && ((rcvr == "Location") && (name == "href") || (name == "location")) {
+			incURL, ok := core.StripQuotes(fields[3])
+			if ok {
+				agg.addIframe(incURL, ctx)
+			} else {
+				log.Printf("%d: bogus redirect = %s\n", lineNumber, fields[3])
+			}
 		}
 	}
 	return nil

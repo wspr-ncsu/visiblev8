@@ -32,6 +32,12 @@
     })
 </script>
 <script>
+    const redir = document.createElement('iframe');
+    //iframe.srcdoc = '<html><body><script src="http://0.0.0.0:8080/b.js"><\/script></body></html>';
+    redir.src = 'http://0.0.0.0:8080/manual-redir.html'
+    document.body.appendChild(redir);
+</script>
+<script>
     const iframe = document.createElement('iframe');
     //iframe.srcdoc = '<html><body><script src="http://0.0.0.0:8080/b.js"><\/script></body></html>';
     iframe.src = 'https://en.wikipedia.org/wiki/JavaScript'
