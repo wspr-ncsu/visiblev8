@@ -1,0 +1,25 @@
+name: Github workflow result aggregator
+description: "Finds and returns the error information for a failed workflow run"
+inputs:
+  run_id:
+    description: "The id for the workflow run"
+    required: true
+  repo:
+    description: "The repo this is checking"
+    required: true
+    default: "visiblev8"
+  owner:
+    description: "The owner of the repo"
+    required: true
+    default: "wspr-ncsu"
+  token:
+    description: The github generated token
+    required: true
+outputs:
+  url:
+    description: "The url to be opened on slack"
+  error_info:
+    description: "The annotations and other useful error information"
+runs:
+  using: "node16"
+  main: dist/index.js

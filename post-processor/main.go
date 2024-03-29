@@ -139,11 +139,13 @@ func invoke(args []string, topLevel bool) error {
 	var aggPasses string
 	var outputFormat string
 	var SubmissionID string
+	var rootDomain string
 	var annotate, showVersion bool
 
 	flags := flag.NewFlagSet("vv8PostProcessor", flag.ContinueOnError)
 	flags.BoolVar(&showVersion, "version", false, "show version (Git commit hash) and quit")
 	flags.StringVar(&SubmissionID, "submissionid", "", "manually specify a submission id to associate with logfiles (used for getting the URL that is being visited)")
+	flags.StringVar(&rootDomain, "rootdomain", "", "manually specify a root domain to associate with logfiles (used for getting the URL that is being visited)")
 	flags.BoolVar(&annotate, "annotate", false, "skip aggregating and dump JSON-annotated log lines to stdout (script/offset context, if any)")
 	flags.StringVar(&aggPasses, "aggs", "noop", "one or more ('+'-delimited) aggregation passes to perform")
 	flags.StringVar(&outputFormat, "output", "stdout", "send data to `dest`; options: 'stdout', 'postgresql'")
@@ -169,6 +171,10 @@ func invoke(args []string, topLevel bool) error {
 
 	if SubmissionID != "" {
 		aggCtx.SubmissionID = uuid.MustParse(SubmissionID)
+	}
+
+	if rootDomain != "" {
+		aggCtx.RootDomain = rootDomain
 	}
 
 	// Parse outputs (actualy, passes) from our sole positional argument

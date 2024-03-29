@@ -41,7 +41,7 @@ That said, a subsequent PostgreSQL-based workflow (via the `Mfeatures` aggregato
 
 ## Other options
 
-* `-submission-id`: Specify the submission ID to which the logs are linked to
+* `-submissionid`: Specify the submission ID to which the logs are linked to
 * `-log-root`: a way to manually specify a base name for a log file when streaming data from `stdin`
 
 ## What are all these aggregators?

@@ -216,8 +216,11 @@ func (ln *LogInfo) changeScript(id int) {
 	ln.World.Context.Script = script
 }
 
-func (ln *LogInfo) changeOrigin(url string) {
-	ln.World.Context.Origin = url
+func (ln *LogInfo) changeOrigin(url string, security_token string) {
+	ln.World.Context.Origin = &Origin{
+		Origin:              url,
+		OriginSecurityToken: security_token,
+	}
 }
 
 // NewIsolateInfo constructs a fresh, empty IsolateInfo for a given hex-string pointer tag
@@ -248,7 +251,7 @@ func NewScriptHash(code string) ScriptHash {
 }
 
 // NewScriptInfo constructs a new script in a given Isolate with the given runtime ID and code body
-func NewScriptInfo(iso *IsolateInfo, id int, code string, activeOrigin string) *ScriptInfo {
+func NewScriptInfo(iso *IsolateInfo, id int, code string, activeOrigin *Origin) *ScriptInfo {
 	return &ScriptInfo{
 		Isolate:     iso,
 		ID:          id,
@@ -302,7 +305,11 @@ func (ln *LogInfo) IngestStream(stream io.Reader, aggs ...Aggregator) error {
 				}
 			case '@':
 				originString, _ := StripQuotes(fields[0])
-				ln.changeOrigin(originString)
+				originSecurityToken := "" // If no origin token is provided, assume it's empty (this is possible for cases for chrome internal JS during startup)
+				if len(fields) > 1 {
+					originSecurityToken, _ = StripQuotes(fields[1])
+				}
+				ln.changeOrigin(originString, originSecurityToken)
 			default:
 				for _, agg := range aggs {
 					err := agg.IngestRecord(&ln.World.Context, lineCount, code, fields)

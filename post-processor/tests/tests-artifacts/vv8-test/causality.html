@@ -1,0 +1,62 @@
+<body>
+    <div id="fp-hash"></div>
+    <img src="x" onerror="trihher_something(); var x =  x + 1;">
+    <div id="blank-slate"></div>
+</body>
+<script>
+    function trihher_something() {
+        const a = document.createElement( 'div' );
+        a.id = 'something'
+        a.textContent = 'Hello World'
+        console.trace();
+        fetch('https://www.google.com', { mode: 'no-cors' })
+        document.body.appendChild( a );
+    }
+</script>
+<script>
+    function run() {
+        // closures are cool
+        const alum = document.querySelector( '#blank-slate' );
+        alum.innerHTML = '<style onload="trihher_something()"></style>';
+    }
+    run();
+</script>
+<script src="fpscanner.js" type="text/javascript"></script>
+<script>
+    generateFingerprint().then((fp)=> {
+        const resultString = JSON.stringify(fp,null,2)
+        const fp_hash = md5(resultString)
+        document.getElementById("fp-hash").innerText = "Your FP Hash: \n"+fp_hash
+        // console.log(fp_hash)
+        
+    })
+</script>
+<script>
+    const iframe = document.createElement('iframe');
+    //iframe.srcdoc = '<html><body><script src="http://0.0.0.0:8080/b.js"><\/script></body></html>';
+    iframe.src = 'https://en.wikipedia.org/wiki/JavaScript'
+    document.body.appendChild(iframe);
+</script>
+<script>
+    const iframe = document.createElement('iframe');
+    //iframe.srcdoc = '<html><body><script src="http://0.0.0.0:8080/b.js"><\/script></body></html>';
+    iframe.src = 'https://en.wikipedia.org/wiki/JavaScript'
+    document.body.appendChild(iframe);
+</script>
+<script>
+    const dawnframe = document.createElement('iframe');
+    dawnframe.src = 'https://dawn.com'
+    document.body.appendChild(dawnframe);
+</script>
+<script>
+    function loadChartbeat() {
+        var e = document.createElement('script');
+        var n = document.getElementsByTagName('script')[0];
+        console.log
+        e.type = 'text/javascript';
+        e.async = true;
+        e.src = '//static.chartbeat.com/js/chartbeat.js';
+        n.parentNode.insertBefore(e, n);
+    }
+    loadChartbeat();
+</script>

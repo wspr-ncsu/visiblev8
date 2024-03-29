@@ -44,7 +44,7 @@ func NewFptpAggregator() (core.Aggregator, error) {
 }
 
 func (agg *fptpAggregator) IngestRecord(ctx *core.ExecutionContext, lineNumber int, op byte, fields []string) error {
-	if (ctx.Script != nil) && !ctx.Script.VisibleV8 && (ctx.Origin != "") {
+	if (ctx.Script != nil) && !ctx.Script.VisibleV8 && (ctx.Origin.Origin != "") {
 		_, ok := agg.scriptList[ctx.Script.ID]
 
 		if !ok {
@@ -129,7 +129,7 @@ func (agg *fptpAggregator) DumpToPostgresql(ctx *core.AggregationContext, sqlDb 
 			return err
 		}
 
-		originURL, err := url.Parse(script.info.FirstOrigin)
+		originURL, err := url.Parse(script.info.FirstOrigin.Origin)
 
 		if err != nil {
 			return err
@@ -150,7 +150,7 @@ func (agg *fptpAggregator) DumpToPostgresql(ctx *core.AggregationContext, sqlDb 
 		originProperty, err := agg.accessEntityPropertyMap(originURLOrigin)
 		if err != nil {
 			originProperty = &EntityProperty{
-				DisplayName: scriptURLOrigin,
+				DisplayName: originURLOrigin,
 				Tracking:    0.0,
 			}
 			agg.eMap.EntityPropertyMap[originURLOrigin] = originProperty
@@ -160,12 +160,13 @@ func (agg *fptpAggregator) DumpToPostgresql(ctx *core.AggregationContext, sqlDb 
 			script.info.CodeHash.SHA2[:],
 			rootDomain,
 			script.info.URL,
-			script.info.FirstOrigin,
+			script.info.FirstOrigin.Origin,
 			agg.firstPartyProperty.DisplayName,
 			scriptProperty.DisplayName,
 			originProperty.DisplayName,
 			scriptProperty.DisplayName != originProperty.DisplayName,
 			scriptProperty.DisplayName != agg.firstPartyProperty.DisplayName,
+
 			tracking,
 		)
 
@@ -200,7 +201,7 @@ func (agg *fptpAggregator) DumpToStream(ctx *core.AggregationContext, stream io.
 			return err
 		}
 
-		originURL, err := url.Parse(script.info.FirstOrigin)
+		originURL, err := url.Parse(script.info.FirstOrigin.Origin)
 
 		if err != nil {
 			return err
@@ -220,7 +221,7 @@ func (agg *fptpAggregator) DumpToStream(ctx *core.AggregationContext, stream io.
 		originProperty, err := agg.accessEntityPropertyMap(originURLOrigin)
 		if err != nil {
 			originProperty = &EntityProperty{
-				DisplayName: scriptURLOrigin,
+				DisplayName: originURLOrigin,
 				Tracking:    0.0,
 			}
 			agg.eMap.EntityPropertyMap[originURLOrigin] = originProperty
@@ -229,7 +230,7 @@ func (agg *fptpAggregator) DumpToStream(ctx *core.AggregationContext, stream io.
 		jstream.Encode(core.JSONArray{"firstpartythirdparty", core.JSONObject{
 			"SHA2":           script.info.CodeHash.SHA2[:],
 			"URL":            script.info.URL,
-			"FirstOrigin":    script.info.FirstOrigin,
+			"FirstOrigin":    script.info.FirstOrigin.Origin,
 			"ScriptProperty": scriptProperty.DisplayName,
 			"OriginProperty": originProperty.DisplayName,
 			"ThirdParty":     scriptProperty.DisplayName != originProperty.DisplayName,

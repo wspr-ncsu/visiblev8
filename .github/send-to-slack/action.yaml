@@ -1,0 +1,21 @@
+name: Slacky
+description: "Finds and returns the error information for a failed workflow run"
+inputs:
+  url:
+    description: "The url to the workflow run"
+    required: true
+  error_info:
+    description: "The errors that we are getting for the workflow run"
+    required: true
+    default: "visiblev8"
+  webhook:
+    description: "The webhook for the slack channel"
+    required: true
+outputs:
+  url:
+    description: "The url to be opened on slack"
+  error_info:
+    description: "The annotations and other useful error information"
+runs:
+  using: "node16"
+  main: dist/index.js

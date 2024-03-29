@@ -117,6 +117,8 @@ func (tree IDLTree) LookupInfo(class, member string) (IDLInfo, error) {
 	if !ok {
 		return info, fmt.Errorf("no such interface name '%s'", info.BaseInterface)
 	}
+	sort.Strings(iface.Properties) // The arrays need to be sorted for sort.SearchStrings' index to make sense
+	sort.Strings(iface.Methods)
 	for iface != nil {
 		if iface.AliasFor != "" {
 			info.BaseInterface = iface.AliasFor
