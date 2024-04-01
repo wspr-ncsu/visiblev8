@@ -131,6 +131,7 @@ if [ "$DEBUG" -eq "0" ]; then
 enable_nacl=false
 dcheck_always_on=false
 is_debug=false
+disable_fieldtrial_testing_config=true
 is_official_build=true
 enable_linux_installer=true
 is_component_build = false
@@ -145,6 +146,7 @@ else
     cat >>out/Release/args.gn <<EOL
 is_debug=true
 dcheck_always_on=true
+disable_fieldtrial_testing_config=true
 enable_nacl=false
 is_component_build=false
 enable_linux_installer=true
@@ -205,6 +207,7 @@ target_cpu = "arm64"
 enable_nacl=false
 dcheck_always_on=false
 is_debug=false
+disable_fieldtrial_testing_config=true
 is_official_build=true
 is_component_build = false
 use_thin_lto=false
@@ -235,6 +238,7 @@ dcheck_always_on=false
 is_debug=false
 is_official_build=true
 enable_linux_installer=true
+disable_fieldtrial_testing_config=true
 is_component_build = false
 use_thin_lto=false
 is_cfi=false
