@@ -76,8 +76,9 @@ echo $LAST_PATCH;
 get_latest_v8_patch_file
 echo $LAST_V8_PATCH_FILE
 
-get_latest_chrome_sandbox_patch_file
-echo $LAST_CHROME_SANDBOX_PATCH_FILE
+# get_latest_chrome_sandbox_patch_file
+# echo $LAST_CHROME_SANDBOX_PATCH_FILE
+
 # Git tweaks
 git config --global --add safe.directory '*'
 export GIT_CACHE_PATH="/build/.git_cache"
@@ -105,9 +106,9 @@ target_os = [ 'android' ]
 EOL
 cd $WD/src
 
-echo "Using $LAST_CHROME_SANDBOX_PATCH_FILE to patch Chrome's sandbox"
+# echo "Using $LAST_CHROME_SANDBOX_PATCH_FILE to patch Chrome's sandbox"
 # "Run `docker commit $(docker ps -q -l) patch-failed` to analyze the failed patches."
-patch -p1 <$LAST_CHROME_SANDBOX_PATCH_FILE || { echo "Patching Chromium $VERSION with $LAST_CHROME_SANDBOX_PATCH_FILE failed. Exiting!" ; exit 42; }
+# patch -p1 <$LAST_CHROME_SANDBOX_PATCH_FILE || { echo "Patching Chromium $VERSION with $LAST_CHROME_SANDBOX_PATCH_FILE failed. Exiting!" ; exit 42; }
 
 ./build/install-build-deps.sh --android --no-prompt
 ./build/linux/sysroot_scripts/install-sysroot.py --arch=arm64

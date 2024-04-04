@@ -12,7 +12,8 @@ ARM=${6:-""}
 
 docker build --platform linux/amd64 -t build-direct -f build-direct.dockerfile .
 # docker run --platform linux/amd64 -i -v $(pwd)/artifacts:/artifacts -v $(pwd)/build:/build -v $VV8_DIR:/build/visiblev8 build-direct $VERSION $DEBUG $ANDROID $ARM
-docker run --platform linux/amd64 -i -v $(pwd)/artifacts:/artifacts -v $(pwd)/build:/build -v $VV8_DIR:/build/visiblev8 -v /home/npantel/generalRepo/122.0.6261.111:/tmp/122.0.6261.111 build-direct $VERSION $DEBUG $ANDROID $ARM
+# docker run --platform linux/amd64 -i -v $(pwd)/artifacts:/artifacts -v $(pwd)/build:/build -v $VV8_DIR:/build/visiblev8 -v /home/npantel/generalRepo/122.0.6261.111:/tmp/122.0.6261.111 build-direct $VERSION $DEBUG $ANDROID $ARM
+docker run --platform linux/amd64 -i -v $(pwd)/artifacts:/artifacts -v $(pwd)/build:/build -v $VV8_DIR:/build/visiblev8 -v /home/npantel/generalRepo/112.0.5615.49:/tmp/112.0.5615.49 build-direct $VERSION $DEBUG $ANDROID $ARM
 
 [ ! -d $ARTIFACT_DIR ] && echo "No artifacts. Please build visiblev8 first and place all artifacts in $ARTIFACT_DIR" && exit 1;
 PACKAGE_NAME_AMD64=`find ./artifacts -name '*amd64.deb' -printf "%f\n" | sort -V | tail -n 1`
