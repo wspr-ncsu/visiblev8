@@ -41,7 +41,7 @@ get_latest_stable_version() {
 
 VV8="$(pwd)/visiblev8"
 [ ! -d $VV8 ] && git clone https://github.com/wspr-ncsu/visiblev8.git $VV8
-
+true
 
 if [ -z "$1" ]; then
     echo "No Chrome version supplied. Will use the latest stable version."
@@ -76,8 +76,8 @@ echo $LAST_PATCH;
 get_latest_v8_patch_file
 echo $LAST_V8_PATCH_FILE
 
-# get_latest_chrome_sandbox_patch_file
-# echo $LAST_CHROME_SANDBOX_PATCH_FILE
+get_latest_chrome_sandbox_patch_file
+echo $LAST_CHROME_SANDBOX_PATCH_FILE
 
 # Git tweaks
 git config --global --add safe.directory '*'
@@ -106,9 +106,9 @@ target_os = [ 'android' ]
 EOL
 cd $WD/src
 
-# echo "Using $LAST_CHROME_SANDBOX_PATCH_FILE to patch Chrome's sandbox"
+echo "Using $LAST_CHROME_SANDBOX_PATCH_FILE to patch Chrome's sandbox"
 # "Run `docker commit $(docker ps -q -l) patch-failed` to analyze the failed patches."
-# patch -p1 <$LAST_CHROME_SANDBOX_PATCH_FILE || { echo "Patching Chromium $VERSION with $LAST_CHROME_SANDBOX_PATCH_FILE failed. Exiting!" ; exit 42; }
+patch -p1 <$LAST_CHROME_SANDBOX_PATCH_FILE || { echo "Patching Chromium $VERSION with $LAST_CHROME_SANDBOX_PATCH_FILE failed. Exiting!" ; exit 42; }
 
 ./build/install-build-deps.sh --android --no-prompt
 ./build/linux/sysroot_scripts/install-sysroot.py --arch=arm64
@@ -145,26 +145,42 @@ else
     # debug args
     cat >>out/Release/args.gn <<EOL
 is_debug=true
-dcheck_always_on=true
+dcheck_always_on=false
 enable_nacl=false
-is_component_build=false
+is_component_build=true
 enable_linux_installer=true
 v8_enable_debugging_features=true
 v8_enable_object_print=true
-v8_optimized_debug=false
+v8_optimized_debug=true
 v8_enable_backtrace=true
-v8_postmortem_support=true
+v8_postmortem_support=false
 v8_use_external_startup_data=false
 v8_enable_i18n_support=false
-v8_static_library=true
-v8_use_external_startup_data=true
+v8_static_library=false
+v8_use_external_startup_data=false
 EOL
+# is_debug=true
+# dcheck_always_on=true
+# enable_nacl=false
+# is_component_build=false
+# enable_linux_installer=true
+# v8_enable_debugging_features=true
+# v8_enable_object_print=true
+# v8_optimized_debug=false
+# v8_enable_backtrace=true
+# v8_postmortem_support=true
+# v8_use_external_startup_data=false
+# v8_enable_i18n_support=false
+# v8_static_library=true
+# v8_use_external_startup_data=true
+# ---- END of previous settings in args.gn
 # target_cpu="x64"
 fi
 gn gen out/Release
 
 # building
-autoninja -C out/Release chrome d8 wasm_api_tests cctest inspector-test v8_unittests v8_mjsunit v8_shell icudtl.dat snapshot_blob.bin web_idl_database chrome/installer/linux:stable_deb
+# autoninja -C out/Release chrome d8 wasm_api_tests cctest inspector-test v8_unittests v8_mjsunit v8_shell icudtl.dat snapshot_blob.bin web_idl_database chrome/installer/linux:stable_deb
+autoninja -C out/Release chrome d8 wasm_api_tests cctest inspector-test v8_unittests v8_mjsunit v8_shell icudtl.dat web_idl_database chrome/installer/linux:stable_deb
 
 # copy artifacts
 mkdir -p /artifacts/$VERSION/
