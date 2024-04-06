@@ -12,7 +12,7 @@ ARM=${6:-""}
 
 docker build --platform linux/amd64 -t build-direct -f build-direct.dockerfile .
 # docker run --platform linux/amd64 -i -v $(pwd)/artifacts:/artifacts -v $(pwd)/build:/build -v $VV8_DIR:/build/visiblev8 build-direct $VERSION $DEBUG $ANDROID $ARM
-docker run --platform linux/amd64 -i -v $(pwd)/artifacts:/artifacts -v $(pwd)/build:/build -v $VV8_DIR:/build/visiblev8 -v /home/npantel/generalRepo/123.0.6312.58:/tmp/123.0.6312.58 build-direct $VERSION $DEBUG $ANDROID $ARM
+docker run --platform linux/amd64 -i -v $(pwd)/artifacts:/artifacts -v $(pwd)/build:/build -v $VV8_DIR:/build/visiblev8 -v /home/npantel/generalRepo/123.0.6312.105:/tmp/123.0.6312.105 build-direct $VERSION $DEBUG $ANDROID $ARM
 # docker run --platform linux/amd64 -i -v $(pwd)/artifacts:/artifacts -v $(pwd)/build:/build -v $VV8_DIR:/build/visiblev8 -v /home/npantel/generalRepo/122.0.6261.111:/tmp/122.0.6261.111 build-direct $VERSION $DEBUG $ANDROID $ARM #doesn't succeed now with custom debug builds.. 
 # docker run --platform linux/amd64 -i -v $(pwd)/artifacts:/artifacts -v $(pwd)/build:/build -v $VV8_DIR:/build/visiblev8 -v /home/npantel/generalRepo/112.0.5615.49:/tmp/112.0.5615.49 build-direct $VERSION $DEBUG $ANDROID $ARM # didn't succeed
 

@@ -1,7 +1,7 @@
 #!/bin/bash
 set -ex
 
-DEBUG=1
+DEBUG=0
 ANDROID=0
 ARM=0
 
