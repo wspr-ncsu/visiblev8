@@ -9,17 +9,11 @@ jobs:
     runs-on: [self-hosted, linux, postprocessor-builder]
     steps:
       - name: Check out the repo
-        uses: actions/checkout@v3
-      - name: Use a caching step
-        uses: actions/cache@v3
-        with:
-          path: |
-            ./post-processor/tracker-radar
-          key: ${{ runner.os }}-build-artifacts
+        uses: actions/checkout@v4
       - name: Build postprocessors
         uses: ./.github/build-postprocessors
       - name: Log in to Docker Hub
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: visiblev8
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
@@ -28,14 +22,14 @@ jobs:
         run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
       - name: Extract metadata (tags, labels) for Docker
         id: meta
-        uses: docker/metadata-action@v4
+        uses: docker/metadata-action@v5
         with:
           images: visiblev8/vv8-postprocessors
           tags: |
             type=raw,value=latest,enable=true
             type=raw,value=${{ steps.short_sha.outputs.sha_short }},enable=true
       - name: Build and push Docker image
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v5
         with:
           context: ./post-processor/
           file: ./post-processor/build/Dockerfile.vv8
@@ -47,4 +41,4 @@ jobs:
         uses: docker://ubuntu:latest
         with:
           entrypoint: /usr/bin/rm
-          args: -rf ./post-processor/artifacts ./post-processor/vv8-postprocessor ./post-processor/adblock/adblock-oracle-rs/target
+          args: -rf ./post-processor/
