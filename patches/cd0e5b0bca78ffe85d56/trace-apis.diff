@@ -1,0 +1,13 @@
+diff --git a/src/objects/objects.cc b/src/objects/objects.cc
+index c6c154e6d98..991adfd8d5f 100644
+--- a/src/objects/objects.cc
++++ b/src/objects/objects.cc
+@@ -1209,7 +1209,7 @@ MaybeHandle<Object> Object::VV8GetPropertyNoSideEffects(LookupIterator* it,
+         return JSObject::GetPropertyWithFailedAccessCheck(it);
+       case LookupIterator::ACCESSOR:
+         return it->isolate()->factory()->undefined_value();
+-      case LookupIterator::INTEGER_INDEXED_EXOTIC:
++      case LookupIterator::TYPED_ARRAY_INDEX_NOT_FOUND:
+         return it->isolate()->factory()->undefined_value();
+       case LookupIterator::DATA:
+         return it->GetDataValue();
