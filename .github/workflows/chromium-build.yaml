@@ -12,13 +12,13 @@ jobs:
         timeout-minutes: 2880
 # Lets give ourselves 2 day to build VisibleV8 (github by default gives 6 hrs which is not enough time to build Chrome three times unless we use Google magic)
         steps:
-        - uses: actions/checkout@v3
+        - uses: actions/checkout@v4
           with:
             fetch-depth: 0
         - name: Extract short SHA
           id: short_sha
           run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-        - uses: actions/github-script@v6
+        - uses: actions/github-script@v7
           id: get_release
           with:
             script: |
@@ -46,7 +46,7 @@ jobs:
               core.setOutput('chromeMajorVersion', chromeMajorVersion);
         - name: Diff our changes
           id: diff
-          uses: actions/github-script@v6
+          uses: actions/github-script@v7
           env:
             oldCommit: ${{ steps.get_release.outputs.commit }}
             currentCommit: ${{ steps.get_release.outputs.currentGitCommit }}
@@ -65,7 +65,7 @@ jobs:
   # Hack: We send the first letter or the string 'empty' since Github runners hang if we send over the entire diff
         - name: Should we publish ?
           id: shouldPublish
-          uses: actions/github-script@v6
+          uses: actions/github-script@v7
           env:
             GIT_DIFF: ${{ steps.diff.outputs.diff }}
           with:
@@ -88,21 +88,21 @@ jobs:
             echo "artifact_name_amd64=$PACKAGE_NAME_AMD64" >> $GITHUB_OUTPUT
             echo "artifact_name_arm64=$PACKAGE_NAME_ARM64" >> $GITHUB_OUTPUT
         - name: Log in to Docker Hub
-          uses: docker/login-action@v2
+          uses: docker/login-action@v3
           with:
             username: visiblev8
             password: ${{ secrets.DOCKERHUB_PASSWORD }}
         - name: Extract metadata (tags, labels) for Docker
           id: meta
           if: steps.shouldPublish.outputs.shouldPublish == 'true'
-          uses: docker/metadata-action@v4
+          uses: docker/metadata-action@v5
           with:
             images: visiblev8/vv8-base
             tags: |
               type=raw,value=latest,enable=true
               type=raw,value=${{ steps.short_sha.outputs.sha_short }}_${{ steps.get_release.outputs.chromeReleaseVersion }},enable=true
         - name: Build and push Docker image
-          uses: docker/build-push-action@v4
+          uses: docker/build-push-action@v5
           if: steps.shouldPublish.outputs.shouldPublish == 'true'
           with:
             context: ./builder/
@@ -131,7 +131,7 @@ jobs:
         - name: Create a release
           if: steps.shouldPublish.outputs.shouldPublish == 'true'
           id: create_release
-          uses: actions/github-script@v6
+          uses: actions/github-script@v7
           with:
             script: |
               const name = 'visiblev8_${{ steps.get_release.outputs.currentGitCommit }}-${{ steps.get_release.outputs.chromeReleaseVersion }}';
