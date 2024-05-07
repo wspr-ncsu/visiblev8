@@ -1,4 +1,4 @@
-FROM golang:1.20 AS build
+FROM golang:1.22 AS build
 
 RUN apt update
 RUN apt install -y --no-install-recommends git python3 python3-pip curl make
