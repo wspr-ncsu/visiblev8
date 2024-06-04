@@ -7,7 +7,7 @@ import (
 	"log"
 	"strings"
 
-	"github.ncsu.edu/jjuecks/vv8-post-processor/core"
+	"github.com/wspr-ncsu/visiblev8/post-processor/core"
 )
 
 // FeatureUsageAggregator implements the Aggregator interface for collecting minimal script API usage data

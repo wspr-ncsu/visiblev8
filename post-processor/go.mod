@@ -1,12 +1,12 @@
-module github.ncsu.edu/jjuecks/vv8-post-processor
+module github.com/wspr-ncsu/visiblev8/post-processor
 
 require (
 	github.com/google/uuid v1.6.0
 	github.com/lib/pq v1.10.9
-	github.com/yaricom/goGraphML v1.4.2
+	github.com/yaricom/goGraphML v1.4.3
 	go.mongodb.org/mongo-driver v1.15.0
-	golang.org/x/crypto v0.23.0
-	golang.org/x/net v0.25.0
+	golang.org/x/crypto v0.24.0
+	golang.org/x/net v0.26.0
 )
 
 require (
@@ -18,8 +18,8 @@ require (
 	github.com/xdg-go/stringprep v1.0.4 // indirect
 	github.com/youmark/pkcs8 v0.0.0-20240424034433-3c2c7870ae76 // indirect
 	golang.org/x/sync v0.7.0 // indirect
-	golang.org/x/sys v0.20.0 // indirect
-	golang.org/x/text v0.15.0 // indirect
+	golang.org/x/sys v0.21.0 // indirect
+	golang.org/x/text v0.16.0 // indirect
 )
 
 go 1.22

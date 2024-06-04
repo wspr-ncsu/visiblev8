@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.ncsu.edu/jjuecks/vv8-post-processor/core"
+	"github.com/wspr-ncsu/visiblev8/post-processor/core"
 )
 
 // Feature stores a distinct "raw Feature name", its components, and any IDL data found
