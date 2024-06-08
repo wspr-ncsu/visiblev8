@@ -17,7 +17,6 @@ import (
 	_ "github.com/lib/pq"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/gridfs"
-
 	"github.com/wspr-ncsu/visiblev8/post-processor/adblock"
 	"github.com/wspr-ncsu/visiblev8/post-processor/callargs"
 	"github.com/wspr-ncsu/visiblev8/post-processor/causality"
@@ -50,6 +49,7 @@ func nullCtor() (core.Aggregator, error) {
 
 // acceptedOutputFormats is the master map of supported aggregators and their short-names used by the CLI
 var acceptedOutputFormats = map[string]formatAggregator{
+	"idlapis":           {"idlApis", idl_apis.NewAggregator},
 	"adblock":           {"Adblock", adblock.NewAdblockAggregator},
 	"fptp":              {"FirstPartyToThirdParty", fptp.NewFptpAggregator},
 	"callargs":          {"CallArguments", callargs.NewCreateCallArgsAggregator},

@@ -8,13 +8,95 @@ import (
 	"log"
 	"os"
 	"sort"
+
+	"golang.org/x/exp/slices"
 )
+
+var GLOBAL_JS_OBJECTS = []string{
+	// NON-STANDARD PROPERTIES
+	`Console`,
+	`Save`,
+	`hasOwnProperty`,
+	`setImmediate`,
+	`setTimeout`,
+	`clearImmediate`,
+	// STANDARD PROPERTIES
+	`globalThis`,
+	`Infinity`,
+	`NaN`,
+	`undefined`,
+	`eval`,
+	`isFinite`,
+	`isNaN`,
+	`parseFloat`,
+	`parseInt`,
+	`decodeURI`,
+	`decodeURIComponent`,
+	`encodeURI`,
+	`encodeURIComponent`,
+	`escape`,
+	`unescape`,
+	`Object`,
+	`Function`,
+	`Boolean`,
+	`Symbol`,
+	`Error`,
+	`AggregateError`,
+	`EvalError`,
+	`RangeError`,
+	`ReferenceError`,
+	`SyntaxError`,
+	`TypeError`,
+	`URIError`,
+	`InternalError`,
+	`Number`,
+	`BigInt`,
+	`Math`,
+	`Date`,
+	`Array`,
+	`Int8Array`,
+	`Uint8Array`,
+	`Uint8ClampedArray`,
+	`Int16Array`,
+	`Uint16Array`,
+	`Int32Array`,
+	`Uint32Array`,
+	`BigInt64Array`,
+	`BigUint64Array`,
+	`Float32Array`,
+	`Float64Array`,
+	`String`,
+	`RegExp`,
+	`Map`,
+	`Set`,
+	`WeakMap`,
+	`WeakSet`,
+	`ArrayBuffer`,
+	`SharedArrayBuffer`,
+	`DataView`,
+	`Atomics`,
+	`JSON`,
+	`Iterator`,
+	`AsyncIterator`,
+	`Promise`,
+	`GeneratorFunction`,
+	`AsyncGeneratorFunction`,
+	`Generator`,
+	`AsyncGenerator`,
+	`AsyncFunction`,
+	`WeakRef`,
+	`FinalizationRegistry`,
+	`Intl`,
+	`Reflect`,
+	`Proxy`,
+}
 
 // IDLInterface is a JSON-unmarshalling structure for reading records from idldata.json
 type IDLInterface struct {
-	ParentName string `json:"parent"`
-	AliasFor   string `json:"aliasFor"`
-	//Members    []string `json:"members"`
+	ParentName string   `json:"parent"`
+	AliasFor   string   `json:"aliasFor"`
+	Aliases    []string `json:"aliases"`
+	Members    []string `json:"members"`
 	Methods    []string `json:"methods"`
 	Properties []string `json:"properties"`
 }
@@ -65,6 +147,61 @@ func (tree IDLTree) LookupInfo(class, member string) (IDLInfo, error) {
 		}
 	}
 	return info, fmt.Errorf("UNPOSSIBLE")
+}
+
+func (tree IDLTree) IsAPIInIDLFile(op byte, class, member string) bool {
+	if op == 'n' {
+		_, ok := tree[member]
+		if !ok {
+			return false
+		} else {
+			return true
+		}
+	} else if op == 'c' || op == 'g' {
+		// Probably a constructor initialization, being miscategorized as a call/get
+		_, ok := tree[member]
+		if ok {
+			return true
+		}
+
+		idx := slices.IndexFunc(GLOBAL_JS_OBJECTS, func(elem string) bool { return elem == member })
+		if idx != -1 {
+			return true
+		}
+	}
+
+	iface, ok := tree[class]
+	if !ok {
+		return false
+	}
+
+	memberSlot := slices.IndexFunc(iface.Members, func(elem string) bool { return elem == member })
+	if memberSlot != -1 {
+		return true
+	}
+
+	methodSlot := slices.IndexFunc(iface.Methods, func(elem string) bool { return elem == member })
+	if methodSlot != -1 {
+		return true
+	}
+
+	propertySlot := slices.IndexFunc(iface.Methods, func(elem string) bool { return elem == member })
+
+	if propertySlot != -1 {
+		return true
+	}
+
+	if tree.IsAPIInIDLFile(op, iface.ParentName, member) {
+		return true
+	}
+
+	for _, alias := range iface.Aliases {
+		if tree.IsAPIInIDLFile(op, alias, member) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // NormalizeMember attempts to look up the base class/interface defining "member" and replace "class" with that name (for backwards compatability, basically)
