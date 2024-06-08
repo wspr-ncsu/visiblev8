@@ -25,6 +25,17 @@ CREATE TABLE IF NOT EXISTS urls (
     url_stemmed TEXT
 );
 
+-- Record of each processed log file
+CREATE TABLE IF NOT EXISTS logfile (
+	id SERIAL PRIMARY KEY NOT NULL,	-- PG ID for FKs from other tables
+	mongo_oid BYTEA NOT NULL,	    -- Mongo vv8log OID of raw log data record
+	uuid TEXT NOT NULL UNIQUE,		-- Unique UUID for this log file
+	root_name TEXT NOT NULL,		-- Root name of log file as originally stored (prefix of all segment names)
+	size BIGINT NOT NULL,			-- Aggregate size (bytes) of all log segments processed
+	lines INT NOT NULL,				-- Aggregate size (lines) of all log segments processed
+	submissionid TEXT		-- Submission ID of the log file
+);
+
 -- Record of each distinct script body loaded
 CREATE TABLE IF NOT EXISTS mega_scripts (
     id SERIAL PRIMARY KEY NOT NULL,
@@ -105,16 +116,6 @@ CREATE TABLE IF NOT EXISTS mega_usages_import_schema (
     usage_mode CHAR(1) NOT NULL,
     usage_count INT NOT NULL,
     PRIMARY KEY (instance_id, feature_id, origin_url_sha256, usage_offset, usage_mode)
-);
--- Record of each processed log file
-CREATE TABLE IF NOT EXISTS logfile (
-	id SERIAL PRIMARY KEY NOT NULL,	-- PG ID for FKs from other tables
-	mongo_oid BYTEA NOT NULL,	    -- Mongo vv8log OID of raw log data record
-	uuid TEXT NOT NULL UNIQUE,		-- Unique UUID for this log file
-	root_name TEXT NOT NULL,		-- Root name of log file as originally stored (prefix of all segment names)
-	size BIGINT NOT NULL,			-- Aggregate size (bytes) of all log segments processed
-	lines INT NOT NULL,				-- Aggregate size (lines) of all log segments processed
-	submissionid TEXT		-- Submission ID of the log file
 );
 
 CREATE TABLE IF NOT EXISTS script_blobs (
