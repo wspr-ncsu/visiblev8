@@ -11,7 +11,7 @@ import (
 	"os/exec"
 
 	"github.com/google/uuid"
-	"github.ncsu.edu/jjuecks/vv8-post-processor/core"
+	"github.com/wspr-ncsu/visiblev8/post-processor/core"
 )
 
 type RawScript struct {

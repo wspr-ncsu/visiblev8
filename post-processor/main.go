@@ -17,18 +17,16 @@ import (
 	_ "github.com/lib/pq"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/gridfs"
-
-	"github.ncsu.edu/jjuecks/vv8-post-processor/adblock"
-	"github.ncsu.edu/jjuecks/vv8-post-processor/callargs"
-	"github.ncsu.edu/jjuecks/vv8-post-processor/causality"
-	"github.ncsu.edu/jjuecks/vv8-post-processor/core"
-	"github.ncsu.edu/jjuecks/vv8-post-processor/elements"
-	"github.ncsu.edu/jjuecks/vv8-post-processor/features"
-	"github.ncsu.edu/jjuecks/vv8-post-processor/flow"
-	"github.ncsu.edu/jjuecks/vv8-post-processor/fptp"
-	"github.ncsu.edu/jjuecks/vv8-post-processor/idl_apis"
-	"github.ncsu.edu/jjuecks/vv8-post-processor/mega"
-	"github.ncsu.edu/jjuecks/vv8-post-processor/micro"
+	"github.com/wspr-ncsu/visiblev8/post-processor/adblock"
+	"github.com/wspr-ncsu/visiblev8/post-processor/callargs"
+	"github.com/wspr-ncsu/visiblev8/post-processor/causality"
+	"github.com/wspr-ncsu/visiblev8/post-processor/core"
+	"github.com/wspr-ncsu/visiblev8/post-processor/elements"
+	"github.com/wspr-ncsu/visiblev8/post-processor/features"
+	"github.com/wspr-ncsu/visiblev8/post-processor/flow"
+	"github.com/wspr-ncsu/visiblev8/post-processor/fptp"
+	"github.com/wspr-ncsu/visiblev8/post-processor/mega"
+	"github.com/wspr-ncsu/visiblev8/post-processor/micro"
 )
 
 // Version is set during build (to the git hash of the compiled code)

@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/lib/pq"
-	"github.ncsu.edu/jjuecks/vv8-post-processor/core"
+	"github.com/wspr-ncsu/visiblev8/post-processor/core"
 )
 
 type Script struct {

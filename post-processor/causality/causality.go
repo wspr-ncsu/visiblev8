@@ -22,7 +22,7 @@ import (
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
 
-	"github.ncsu.edu/jjuecks/vv8-post-processor/core"
+	"github.com/wspr-ncsu/visiblev8/post-processor/core"
 )
 
 type genesisLink struct {
@@ -203,6 +203,13 @@ func (agg *ScriptCausalityAggregator) IngestRecord(ctx *core.ExecutionContext, l
 				} else {
 					log.Printf("%d, iframe.srcdoc(%s)...wat??", lineNumber, html)
 				}
+			}
+		} else if (op == 's') && ((rcvr == "Location") && (name == "href") || (name == "location")) {
+			incURL, ok := core.StripQuotes(fields[3])
+			if ok {
+				agg.addIframe(incURL, ctx)
+			} else {
+				log.Printf("%d: bogus redirect = %s\n", lineNumber, fields[3])
 			}
 		}
 	}

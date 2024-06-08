@@ -7,10 +7,10 @@ import (
 	"io"
 	"log"
 	"net/url"
-	"strings"
 
 	"github.com/lib/pq"
-	"github.ncsu.edu/jjuecks/vv8-post-processor/core"
+	"github.com/wspr-ncsu/visiblev8/post-processor/core"
+	"golang.org/x/net/publicsuffix"
 )
 
 type Script struct {
@@ -58,13 +58,16 @@ func (agg *fptpAggregator) IngestRecord(ctx *core.ExecutionContext, lineNumber i
 }
 
 func (agg *fptpAggregator) accessEntityPropertyMap(origin string) (*EntityProperty, error) {
-	for domain, entityProperty := range agg.eMap.EntityPropertyMap {
-		if strings.Contains(origin, domain) {
-			return entityProperty, nil
-		}
+	etldplusone, err := publicsuffix.EffectiveTLDPlusOne(origin)
+	if err != nil {
+		return nil, err
+	}
+	entity, ok := agg.eMap.EntityPropertyMap[etldplusone]
+	if !ok {
+		return nil, fmt.Errorf("no entity property found for origin %s", origin)
 	}
 
-	return nil, fmt.Errorf("no entity property found for origin %s", origin)
+	return entity, nil
 }
 
 var firstPartyThirdPartyFields = [...]string{
@@ -166,7 +169,6 @@ func (agg *fptpAggregator) DumpToPostgresql(ctx *core.AggregationContext, sqlDb 
 			originProperty.DisplayName,
 			scriptProperty.DisplayName != originProperty.DisplayName,
 			scriptProperty.DisplayName != agg.firstPartyProperty.DisplayName,
-
 			tracking,
 		)
 

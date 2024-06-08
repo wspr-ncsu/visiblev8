@@ -9,13 +9,13 @@ jobs:
     runs-on: [self-hosted, linux, workflow-finish-runner]
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Wait for results
         run: sleep 10
       - name: Extract short SHA
         id: short_sha
         run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-      - uses: actions/github-script@v6
+      - uses: actions/github-script@v7
         id: get_release
         with:
           script: |
