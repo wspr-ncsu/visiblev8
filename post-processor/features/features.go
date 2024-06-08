@@ -19,7 +19,7 @@ import (
 
 	"github.com/lib/pq"
 
-	"github.ncsu.edu/jjuecks/vv8-post-processor/core"
+	"github.com/wspr-ncsu/visiblev8/post-processor/core"
 )
 
 // UsageInfo provides the key type for our map of feature-tuple aggregates

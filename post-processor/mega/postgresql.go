@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.ncsu.edu/jjuecks/vv8-post-processor/core"
+	"github.com/wspr-ncsu/visiblev8/post-processor/core"
 )
 
 // scriptHashIDMap is used to map the global script body identifiers to Postgres FK IDs
