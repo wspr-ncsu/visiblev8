@@ -25,9 +25,11 @@ This will start a docker container with the latest version of VisibleV8 installe
 ```bash
 /opt/chromium.org/chromium/chrome --no-sandbox --headless --screenshot  --virtual-time-budget=30000 --user-data-dir=/tmp --disable-dev-shm-usage https://www.google.com
 ```
-and the VisibleV8 logs will be available in the local directory.
+and the VisibleV8 logs will be available in the local directory. 
 
 Alternatively, you can download Debian packages from the [releases](https://github.com/wspr-ncsu/visiblev8/releases) page and install them manually.
+
+To run web-scale measurements using VisibleV8, you can use the [visiblev8-crawler](https://github.com/wspr-ncsu/visiblev8-crawler).
 
 ## VV8 for Android
 
