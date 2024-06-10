@@ -9,7 +9,6 @@ import (
 
 	"github.com/lib/pq"
 	"github.com/wspr-ncsu/visiblev8/post-processor/core"
-	"github.com/wspr-ncsu/visiblev8/post-processor/features"
 )
 
 type idlApisAggregator struct {
@@ -29,7 +28,7 @@ func NewAggregator() (core.Aggregator, error) {
 }
 
 func (agg *idlApisAggregator) IngestRecord(ctx *core.ExecutionContext, lineNumber int, op byte, fields []string) error {
-	if (ctx.Script != nil) && !ctx.Script.VisibleV8 && (ctx.Origin != "") {
+	if (ctx.Script != nil) && !ctx.Script.VisibleV8 && (ctx.Origin.Origin != "") {
 		offset, err := strconv.Atoi(fields[0])
 		if err != nil {
 			return fmt.Errorf("%d: invalid script offset '%s'", lineNumber, fields[0])
@@ -51,7 +50,7 @@ func (agg *idlApisAggregator) IngestRecord(ctx *core.ExecutionContext, lineNumbe
 			return fmt.Errorf("%d: invalid mode '%c'; fields: %v", lineNumber, op, fields)
 		}
 
-		if features.FilterName(member) {
+		if core.FilterName(member) {
 			// We have some names (V8 special cases, numeric indices) that are never useful
 			return nil
 		}
@@ -80,10 +79,10 @@ func (agg *idlApisAggregator) IngestRecord(ctx *core.ExecutionContext, lineNumbe
 				URL = ctx.Script.EvaledBy.URL
 			}
 			Origin := ``
-			if ctx.Script.FirstOrigin != "" {
-				Origin = ctx.Script.FirstOrigin
+			if ctx.Script.FirstOrigin.Origin != "" {
+				Origin = ctx.Script.FirstOrigin.Origin
 			} else {
-				Origin = ctx.Script.EvaledBy.FirstOrigin
+				Origin = ctx.Script.EvaledBy.FirstOrigin.Origin
 			}
 			scriptData = append(scriptData, fmt.Sprintf("%c %s %s %s", op, strconv.Itoa(offset), URL, Origin))
 			agg.APIs[fullName] = scriptData
