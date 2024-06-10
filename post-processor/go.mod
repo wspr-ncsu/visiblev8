@@ -6,6 +6,7 @@ require (
 	github.com/yaricom/goGraphML v1.4.3
 	go.mongodb.org/mongo-driver v1.15.0
 	golang.org/x/crypto v0.24.0
+	golang.org/x/exp v0.0.0-20240604190554-fc45aab8b7f8
 	golang.org/x/net v0.26.0
 )
 
