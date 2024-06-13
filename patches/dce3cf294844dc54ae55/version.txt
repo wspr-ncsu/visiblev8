@@ -1,0 +1,2 @@
+Chrome  126.0.6478.50
+Commit dce3cf294844dc54ae55ff21eb561919a51b72f9
