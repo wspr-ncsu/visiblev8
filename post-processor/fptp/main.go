@@ -23,6 +23,18 @@ func NewScript(info *core.ScriptInfo) *Script {
 	}
 }
 
+func split(s string, sep rune, n int) (string, string) {
+	for i, sep2 := range s {
+		if sep2 == sep {
+			n--
+			if n == 0 {
+				return s[:i], s[i+1:]
+			}
+		}
+	}
+	return s, ""
+}
+
 type fptpAggregator struct {
 	scriptList         map[int]*Script
 	eMap               *EMap
@@ -126,13 +138,16 @@ func (agg *fptpAggregator) DumpToPostgresql(ctx *core.AggregationContext, sqlDb 
 	log.Printf("firstPartyThirdParty: %d scripts analysed", len(agg.scriptList))
 
 	for _, script := range agg.scriptList {
-		scriptURL, err := url.Parse(script.info.URL)
+		domain, _ := split(script.info.URL, '/', 3)
+		scriptURL, err := url.Parse(domain)
 
 		if err != nil {
 			return err
 		}
 
-		originURL, err := url.Parse(script.info.FirstOrigin.Origin)
+		domain, _ = split(script.info.FirstOrigin.Origin, '/', 3)
+
+		originURL, err := url.Parse(domain)
 
 		if err != nil {
 			return err
