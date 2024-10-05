@@ -60,7 +60,7 @@ The first function `chromeSequence` will spawn an instance of Chromium and open 
 Note: The build process for Android has been simplified. Head over to `build/build_direct.sh` and set ANDROID=1 if you want to build the `apk` from scratch.
 
 ## Building VisibleV8
-(These instructions are for building VV8 on Chromium 104. Find commit hashes of other versions [here](http://omahaproxy.appspot.com/), but make sure there's a matching patchset in `patches/` in this repository.)
+(These instructions are for building VV8 on Chromium 104. Find commit hashes of other versions [here](https://chromiumdash.appspot.com/fetch_releases?channel=Stable&platform=Linux&num=1&offset=0), but make sure there's a matching patchset in `patches/` in this repository.)
 
 * Make sure you have [Docker](https://docs.docker.com/install/) and [Python 3](https://www.python.org/downloads/) and a lot of free disk space (e.g., 50GiB) for downloading and building Chromium
 * Clone this repository *(we will call the cloned working directory **$VV8**)*
