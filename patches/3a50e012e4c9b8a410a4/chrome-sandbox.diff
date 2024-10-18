@@ -1,0 +1,69 @@
+diff --git a/base/android/java/src/org/chromium/base/process_launcher/BindService.java b/base/android/java/src/org/chromium/base/process_launcher/BindService.java
+index d5ff40b18a365..3d8d5eef2b42e 100644
+--- a/base/android/java/src/org/chromium/base/process_launcher/BindService.java
++++ b/base/android/java/src/org/chromium/base/process_launcher/BindService.java
+@@ -27,7 +27,7 @@ final class BindService {
+ 
+     static boolean supportVariableConnections() {
+         return Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+-                && !BuildConfig.IS_INCREMENTAL_INSTALL;
++                && !true;  // VisibleV8 android change required disabling renderer isolation.
+     }
+ 
+     // Note that handler is not guaranteed to be used, and client still need to correctly handle
+diff --git a/build/install-build-deps.py b/build/install-build-deps.py
+index 7244cf5db7549..87a70add2b676 100755
+--- a/build/install-build-deps.py
++++ b/build/install-build-deps.py
+@@ -846,8 +846,16 @@ def install_packages(options):
+   try:
+     packages = find_missing_packages(options)
+     if packages:
++      env = os.environ.copy()
++      env["LANGUAGE"] = "en"
++      env["LANG"] = "C"
++      env["DEBIAN_FRONTEND"] = 'noninteractive'
+       quiet = ["-qq", "--assume-yes"] if options.no_prompt else []
+-      subprocess.check_call(["sudo", "apt-get", "install"] + quiet + packages)
++      if options.no_prompt:
++        subprocess.check_call(["sudo", "-E", "apt-get", "install"] + quiet + packages, env=env)
++      else:
++        subprocess.check_call(["sudo", "apt-get", "install"] + quiet + packages)
++
+       print(file=sys.stderr)
+     else:
+       print("No missing packages, and the packages are up to date.",
+diff --git a/chrome/android/java/AndroidManifest.xml b/chrome/android/java/AndroidManifest.xml
+index f6ffd4c55f136..a1fa781c90e06 100644
+--- a/chrome/android/java/AndroidManifest.xml
++++ b/chrome/android/java/AndroidManifest.xml
+@@ -1226,13 +1226,13 @@ by a child template that "extends" this file.
+       <service android:name="org.chromium.content.app.SandboxedProcessService{{ i }}"
+           android:process=":sandboxed_process{{ i }}"
+           android:permission="{{ manifest_package }}.permission.CHILD_SERVICE"
+-          android:isolatedProcess="true"
++          android:isolatedProcess="false"
+           android:exported="{{sandboxed_service_exported|default(false)}}"
+           {% if (i == 0) %}
+           android:useAppZygote="true"
+           {% endif %}
+           {% if (sandboxed_service_exported|default(false)) == 'true' %}
+-          android:externalService="true"
++          android:externalService="false"
+           tools:ignore="ExportedService"
+           android:visibleToInstantApps="true"
+           {% endif %} />
+diff --git a/content/renderer/renderer_main.cc b/content/renderer/renderer_main.cc
+index fb8baa1bd68ae..27d0ba43730b0 100644
+--- a/content/renderer/renderer_main.cc
++++ b/content/renderer/renderer_main.cc
+@@ -234,8 +234,7 @@ int RendererMain(MainFunctionParams parameters) {
+   {
+     content::ContentRendererClient* client = GetContentClient()->renderer();
+     bool should_run_loop = true;
+-    bool need_sandbox =
+-        !command_line.HasSwitch(sandbox::policy::switches::kNoSandbox);
++    bool need_sandbox = false; // VisibleV8 disable sandbox for desktop
+ 
+     if (!need_sandbox) {
+       // The post-sandbox actions still need to happen at some point.
