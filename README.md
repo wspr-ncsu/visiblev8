@@ -1,3 +1,6 @@
+[![Build VisibleV8](https://github.com/wspr-ncsu/visiblev8/actions/workflows/chromium-build.yaml/badge.svg)](https://github.com/wspr-ncsu/visiblev8/actions/workflows/chromium-build.yaml) [![Build VV8 postprocessors](https://github.com/wspr-ncsu/visiblev8/actions/workflows/post-processor.yaml/badge.svg)](https://github.com/wspr-ncsu/visiblev8/actions/workflows/post-processor.yaml) [![GitHub release](https://img.shields.io/github/release/wspr-ncsu/visiblev8?include_prereleases=&color=blue)](https://github.com/wspr-ncsu/visiblev8/releases/) ![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/wspr-ncsu/visiblev8/total)
+
+
 # VisibleV8
 
 VisibleV8 is a custom variant of the V8 JavaScript engine that logs all JavaScript API calls and their arguments to a trace log. Maintained and distributed as a minimally-invasive and maintainable patchset, VisibleV8 captures and logs the following activities in plaintext logs:
