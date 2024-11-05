@@ -38,7 +38,7 @@ jobs:
           file: ./.github/build-postprocessors/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: postprocessors:latest
+          tags: visiblev8/vv8-postprocessors:latest
       - name: Remove artifacts
         if: always()
         uses: docker://ubuntu:latest
