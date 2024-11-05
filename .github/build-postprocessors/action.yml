@@ -10,7 +10,6 @@ runs:
     - name: Build and push
       uses: docker/build-push-action@v6
       with:
-        context: ./post-processor
         file: ./.github/build-postprocessors/Dockerfile
         platforms: linux/amd64,linux/arm64
         push: false
