@@ -38,7 +38,7 @@ jobs:
           context: ./post-processor
           file: ./.github/build-postprocessors/Dockerfile
           platforms: linux/amd64,linux/arm64
-          push: false
+          push: true
           tags: postprocessors:latest
       - name: Remove artifacts
         if: always()
