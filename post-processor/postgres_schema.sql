@@ -172,20 +172,6 @@ CREATE TABLE IF NOT EXISTS script_flow (
 	evaled_by INT -- REFERENCES script_flow (id)
 );
 
-CREATE TABLE IF NOT EXISTS linked_flow (
-	id SERIAL PRIMARY KEY NOT NULL,
-	isolate TEXT NOT NULL, -- V8 isolate pointer
-	submissionid TEXT,
-	scriptSHA2 BYTEA,
-	visiblev8 BOOLEAN NOT NULL, -- Is the script loaded by the browser/injected by VisibleV8 (in most cases you want to ignore scripts if this is true)
-	
-	code TEXT NOT NULL,
-	first_origin TEXT,
-	url TEXT,
-	apis TEXT[] NOT NULL,	-- All APIs loaded by a script in the order they were executed
-	evaled_by INT -- REFERENCES script_flow (id)
-);
-
 -- Feature usage information (for monomorphic callsites)
 CREATE TABLE IF NOT EXISTS feature_usage (
 	id SERIAL PRIMARY KEY NOT NULL,

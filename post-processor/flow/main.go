@@ -82,10 +82,10 @@ func (agg *flowAggregator) IngestRecord(ctx *core.ExecutionContext, lineNumber i
 			agg.scriptList[ctx.Script.ID] = script
 		}
 
-		currentAction := fmt.Sprint(offset) + string(',') + fullName + string(',') + string(op)
+		currentAction := fmt.Sprint(offset) + string(',') + fullName
 
-		if agg.lastAction[:len(agg.lastAction) - 2] == currentAction[:len(currentAction) - 2] && op == 'c' {
-			script.APIs = script.APIs[:len(script.APIs) - 1]
+		if agg.lastAction == currentAction && op == 'c' {
+			return nil
 		}
 
 		script.APIs = append(script.APIs, currentAction)
@@ -96,8 +96,6 @@ func (agg *flowAggregator) IngestRecord(ctx *core.ExecutionContext, lineNumber i
 
 var scriptFlowFields = [...]string{
 	"isolate",
-	"submissionid",
-	"instanceid",
 	"visiblev8",
 	"code",
 	"url",
@@ -113,7 +111,7 @@ func (agg *flowAggregator) DumpToPostgresql(ctx *core.AggregationContext, sqlDb 
 		return err
 	}
 
-	stmt, err := txn.Prepare(pq.CopyIn("linked_flow", scriptFlowFields[:]...))
+	stmt, err := txn.Prepare(pq.CopyIn("script_flow", scriptFlowFields[:]...))
 	if err != nil {
 		txn.Rollback()
 		return err
@@ -132,8 +130,6 @@ func (agg *flowAggregator) DumpToPostgresql(ctx *core.AggregationContext, sqlDb 
 		_, err = stmt.Exec(
 			script.info.Isolate.ID,
 			script.info.VisibleV8,
-			ctx.Ln.SubmissionID,
-			script.info.CodeHash,
 			script.info.Code,
 			script.info.URL,
 			evaledById,
