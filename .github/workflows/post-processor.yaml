@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - 'master'
+  workflow_dispatch:
 jobs:
   upload_to_docker:
     name: Push docker image to docker Hub
