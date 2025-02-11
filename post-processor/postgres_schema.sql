@@ -166,6 +166,7 @@ CREATE TABLE IF NOT EXISTS script_flow (
 	isolate TEXT NOT NULL, -- V8 isolate pointer
 	visiblev8 BOOLEAN NOT NULL, -- Is the script loaded by the browser/injected by VisibleV8 (in most cases you want to ignore scripts if this is true)
 	code TEXT NOT NULL,
+	sha256 BYTEA,
 	first_origin TEXT,
 	url TEXT,
 	apis TEXT[] NOT NULL,	-- All APIs loaded by a script in the order they were executed
