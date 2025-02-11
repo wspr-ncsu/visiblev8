@@ -92,6 +92,10 @@ func (agg *usageAggregator) IngestRecord(ctx *core.ExecutionContext, lineNumber 
 			fullName = strings.Split(fullName, ",")[1]
 		}
 
+		if strings.Contains(receiver, ",") {
+			receiver = strings.Split(receiver, ",")[1]
+		}
+
 		// Feature-map lookup/population (with IDL lookup)
 		feature, ok := agg.features[fullName]
 		if !ok {
