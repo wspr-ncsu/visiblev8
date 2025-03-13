@@ -1,5 +1,4 @@
 const core = require("@actions/core");
-const fetch = require("node-fetch");
 (async () => {
     const url = core.getInput("url");
     const error_out = core.getInput("error_info");
