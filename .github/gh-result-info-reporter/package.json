@@ -10,6 +10,6 @@
   "license": "ISC",
   "dependencies": {
     "@actions/core": "^1.11.1",
-    "@octokit/rest": "^21.1.1"
+    "@octokit/rest": "^22.0.0"
   }
 }
