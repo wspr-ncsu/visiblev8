@@ -224,6 +224,28 @@ EOL
     
     chmod ugo+r /artifacts/$VERSION/ChromePublic-vv8-$VERSION.apk
 
+    cat >>out/Android/args.gn <<EOL
+target_os = "android"
+target_cpu = "arm64"
+system_webview_package_name = "com.google.android.webview.beta"
+enable_nacl=false
+dcheck_always_on=false
+is_debug=false
+disable_fieldtrial_testing_config=true
+is_official_build=true
+is_component_build = false
+use_thin_lto=false
+is_cfi=false
+chrome_pgo_phase=0
+v8_use_external_startup_data=true
+EOL
+    gn gen out/Android
+    autoninja -C out/Android system_webview_apk
+
+    cp -r out/Android/apks/SystemWebView.apk /artifacts/$VERSION/SystemWebView-vv8-$VERSION.apk
+
+    chmod ugo+r /artifacts/$VERSION/SystemWebView-vv8-$VERSION.apk
+
     rm -rf out/Android
 fi
 
