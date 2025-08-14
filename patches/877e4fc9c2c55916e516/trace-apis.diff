@@ -1,4 +1,4 @@
-From 592c41db831d82ec2c475f887594673bea02a550 Mon Sep 17 00:00:00 2001
+From be5d5d76b7ee8aff74b230a40a89f941006b6508 Mon Sep 17 00:00:00 2001
 From: Sohom <sdatta4@ncsu.edu>
 Date: Wed, 13 Aug 2025 21:08:06 -0400
 Subject: [PATCH] VisibleV8 patchset for Chrome 139
@@ -18,7 +18,7 @@ Subject: [PATCH] VisibleV8 patchset for Chrome 139
  src/init/v8.cc                        |   2 +
  src/interpreter/bytecode-generator.cc | 125 ++++-
  src/objects/objects-inl.h             |   9 +
- src/objects/objects.cc                |  85 ++++
+ src/objects/objects.cc                |  87 ++++
  src/objects/objects.h                 |   7 +
  src/runtime/runtime-compiler.cc       |   9 +
  src/runtime/runtime-test.cc           |  99 ++++
@@ -26,7 +26,7 @@ Subject: [PATCH] VisibleV8 patchset for Chrome 139
  src/runtime/runtime-utils.h           |  99 ++++
  src/runtime/runtime.cc                |  22 +
  src/runtime/runtime.h                 |  21 +
- 22 files changed, 1329 insertions(+), 218 deletions(-)
+ 22 files changed, 1331 insertions(+), 218 deletions(-)
  create mode 100644 include/v8-visiblev8.h
 
 diff --git a/BUILD.gn b/BUILD.gn
@@ -769,10 +769,10 @@ index 40eea15ed3d..e60c6a420c4 100644
      Isolate* isolate, DirectHandle<JSAny> object, DirectHandle<Name> name,
      DirectHandle<Object> value, Maybe<ShouldThrow> should_throw,
 diff --git a/src/objects/objects.cc b/src/objects/objects.cc
-index 78ad4570e8d..71d8c02498a 100644
+index 78ad4570e8d..76a12788aee 100644
 --- a/src/objects/objects.cc
 +++ b/src/objects/objects.cc
-@@ -1246,6 +1246,91 @@ MaybeDirectHandle<Object> Object::GetLengthFromArrayLike(
+@@ -1246,6 +1246,93 @@ MaybeDirectHandle<Object> Object::GetLengthFromArrayLike(
    return Object::ToLength(isolate, val);
  }
  
@@ -833,6 +833,8 @@ index 78ad4570e8d..71d8c02498a 100644
 +      return it->isolate()->factory()->undefined_value();
 +    case LookupIterator::DATA:
 +      return it->GetDataValue();
++    case LookupIterator::STRING_LOOKUP_START_OBJECT:
++      return it->GetStringPropertyValue();
 +    case LookupIterator::NOT_FOUND:
 +      if (it->IsPrivateName()) {
 +        auto private_symbol = Cast<Symbol>(it->name());
