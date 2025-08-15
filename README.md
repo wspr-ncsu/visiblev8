@@ -54,7 +54,7 @@ def chromeSequence(website):
       print("opened chrome successfully")
 
 def pull_log_file(website_filename):
-    pull_cmd = f"""adb pull /sdcard/{website_filename} ."""
+    pull_cmd = f"""adb pull /sdcard/Documents {website_filename} ."""
     print(pull_cmd)
     os.system(pull_cmd)
 ```
@@ -63,8 +63,20 @@ The first function `chromeSequence` will spawn an instance of Chromium and open 
 
 Note: The build process for Android has been simplified. Head over to `build/build_direct.sh` and set ANDROID=1 if you want to build the `apk` from scratch.
 
+# VV8 for WebView
+
+We also include a version of VisibleV8 for Android WebViews based on Chrome version. Prebuilt `SystemWebView.apk` files are available in our [artifact releases](https://github.com/wspr-ncsu/visiblev8/releases) since Chrome 139. To install the apk file on a phone, you will need to install the [`com.google.android.webview.beta`](https://play.google.com/store/apps/details?id=com.google.android.webview.beta&hl=en_US) app for the Google Play App Store on a rooted Android device and then subsequently use a systemization module (XDA forums has some tools to do this at [this link](https://xdaforums.com/t/module-terminal-app-systemizer-v17-3-1.3585851/)) to systemize the APK to override the downloaded beta version of the APK. Note, that to do this, you will probably need to root your phone using [Magisk](https://github.com/topjohnwu/Magisk). Once this done, you will need to run the following commands:
+- `adb shell cmd webviewupdate disable-multiprocess`
+- `adb shell cmd webviewupdate set-webview-implementation com.google.android.webview.beta`
+
+and then reboot the phone. Subsequently, all apps should start using VisibleV8WebView to load web content instead of the the default WebView.
+
+Alternatively, more developer focussed (or custom) versions of Android that allow you to directly become root can be used, and the APK file can be installed directly as well.
+
+To build VisibleV8 WebViews for architectures, head over to `build/build-direct.sh` and modify line 229 and set `target_cpu="arm64"` to a different value and run the build pipeline with `cd builder && make build VERSION=<version> ANDROID=1` see the section below for more details.
+
 ## Building VisibleV8
-(These instructions are for building VV8 on Chromium 104. Find commit hashes of other versions [here](https://chromiumdash.appspot.com/fetch_releases?channel=Stable&platform=Linux&num=1&offset=0), but make sure there's a matching patchset in `patches/` in this repository.)
+(These instructions are for building VV8 on Chromium 104 onward. Find commit hashes of other versions [here](https://chromiumdash.appspot.com/fetch_releases?channel=Stable&platform=Linux&num=1&offset=0), but make sure there's a matching patchset in `patches/` in this repository.)
 
 * Make sure you have [Docker](https://docs.docker.com/install/) and [Python 3](https://www.python.org/downloads/) and a lot of free disk space (e.g., 50GiB) for downloading and building Chromium
 * Clone this repository *(we will call the cloned working directory **$VV8**)*
