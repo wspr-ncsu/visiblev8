@@ -1,3 +1,34 @@
+From 51548bfe4f345d0a97f8dca5456e045c637f1d7c Mon Sep 17 00:00:00 2001
+From: Anonymous <fake-email@univ.edu>
+Date: Mon, 7 Jul 2025 09:30:15 -0000
+Subject: [PATCH] Webview version of VisibleV8 for Chrome 138
+
+---
+ BUILD.gn                              |  11 +-
+ include/v8-visiblev8.h                |  31 ++
+ src/api/api.cc                        |  53 ++
+ src/builtins/builtins-api.cc          |   8 +
+ src/builtins/builtins-call-gen.cc     |  14 +
+ src/builtins/builtins-function.cc     |  10 +
+ src/builtins/builtins-global.cc       |   8 +
+ src/builtins/builtins-reflect.cc      |   6 +
+ src/builtins/reflect.tq               |   9 +
+ src/compiler/js-call-reducer.cc       | 217 +-------
+ src/ic/accessor-assembler.cc          |   2 +
+ src/init/v8.cc                        |   2 +
+ src/interpreter/bytecode-generator.cc | 125 ++++-
+ src/objects/objects-inl.h             |   9 +
+ src/objects/objects.cc                |  85 ++++
+ src/objects/objects.h                 |   7 +
+ src/runtime/runtime-compiler.cc       |   9 +
+ src/runtime/runtime-test.cc           |  99 ++++
+ src/runtime/runtime-utils.cc          | 700 ++++++++++++++++++++++++++
+ src/runtime/runtime-utils.h           |  99 ++++
+ src/runtime/runtime.cc                |  22 +
+ src/runtime/runtime.h                 |  21 +
+ 22 files changed, 1329 insertions(+), 218 deletions(-)
+ create mode 100644 include/v8-visiblev8.h
+
 diff --git a/BUILD.gn b/BUILD.gn
 index f2f72a02c61..0e29f32d0f8 100644
 --- a/BUILD.gn
@@ -34,6 +65,108 @@ index f2f72a02c61..0e29f32d0f8 100644
  }
  
  enabled_external_defines =
+diff --git a/include/v8-visiblev8.h b/include/v8-visiblev8.h
+new file mode 100644
+index 00000000000..fcc06c8fc91
+--- /dev/null
++++ b/include/v8-visiblev8.h
+@@ -0,0 +1,31 @@
++#ifndef INCLUDE_V8_VISIBLEV8_H_
++#define INCLUDE_V8_VISIBLEV8_H_
++
++#include <vector>
++
++#include "v8-isolate.h"
++#include "v8-local-handle.h"
++#include "v8-value.h"
++
++
++namespace v8 {
++    void visv8_log_java_api_call(Isolate *isolate, bool is_constructor,
++                        v8::Local<String> local_func,
++                        v8::Local<Object> local_receiver,
++                        v8::Local<Value> local_result,
++                        const std::vector<v8::Local<v8::Value>>& argv, int argc);
++
++    void visv8_log_java_prop_set(Isolate *isolate, int call_site,
++                        v8::Local<v8::Object> local_obj, 
++                        v8::Local<v8::Object> local_prop, 
++                        v8::Local<v8::Object> local_value);
++
++    void visv8_log_java_prop_get(Isolate *isolate, int call_site,
++                        v8::Local<v8::Object> local_obj,
++                        v8::Local<v8::Object> local_prop,
++                        v8::Local<v8::Object> local_value);
++
++}
++
++
++#endif  // INCLUDE_V8_VISIBLEV8_H_
+\ No newline at end of file
+diff --git a/src/api/api.cc b/src/api/api.cc
+index 1298ed3d34f..55c8c6d1449 100644
+--- a/src/api/api.cc
++++ b/src/api/api.cc
+@@ -12464,6 +12464,59 @@ TryToCopyAndConvertArrayToCppBuffer<CTypeInfoBuilder<double>::Build().GetId(),
+                                                             max_length);
+ }
+ 
++v8::internal::Isolate* ConvertToInternalIsolate(v8::Isolate* public_isolate) {
++    return reinterpret_cast<v8::internal::Isolate*>(public_isolate);
++}
++
++std::vector<v8::internal::Tagged<v8::internal::Object>>* ConvertArrayToTagged(
++    const std::vector<v8::Local<v8::Value>>& argv, int argc) {
++
++    auto* tagged_values = new std::vector<v8::internal::Tagged<v8::internal::Object>>();
++    tagged_values->reserve(argc);
++
++    for (const auto& local_value : argv) {
++        internal::DirectHandle<internal::Object> val = Utils::OpenDirectHandle(*local_value);
++        tagged_values->push_back(*val);
++    }
++
++    return tagged_values;
++}
++
++void visv8_log_java_api_call(Isolate *isolate, bool is_constructor,
++                        v8::Local<String> local_func,
++                        v8::Local<Object> local_receiver,
++                        v8::Local<Value> local_result,
++                         const std::vector<v8::Local<v8::Value>>& argv, int argc) {
++                          v8::internal::Isolate* internal_isolate = ConvertToInternalIsolate(isolate);
++                          std::vector<v8::internal::Tagged<v8::internal::Object>> * args = ConvertArrayToTagged(argv, argc);
++                          internal::DirectHandle<v8::internal::String> func = Utils::OpenDirectHandle(*local_func);
++                          internal::DirectHandle<v8::internal::Object> receiver = Utils::OpenDirectHandle(*local_receiver);
++                          internal::DirectHandle<v8::internal::Object> result = Utils::OpenDirectHandle(*local_result);
++                          internal::ext_visv8_log_java_api_call(internal_isolate, is_constructor, *func, *receiver, *result, args, argc);
++                        }
++
++void visv8_log_java_prop_set(Isolate *isolate, int call_site,
++                        v8::Local<v8::Object> local_obj, 
++                        v8::Local<v8::Object> local_prop, 
++                        v8::Local<v8::Object> local_value) {
++                          v8::internal::Isolate* internal_isolate = ConvertToInternalIsolate(isolate);
++                          internal::DirectHandle<v8::internal::Object> obj = Utils::OpenDirectHandle(*local_obj);
++                          internal::DirectHandle<v8::internal::Object> prop = Utils::OpenDirectHandle(*local_prop);
++                          internal::DirectHandle<v8::internal::Object> value = Utils::OpenDirectHandle(*local_value);
++                          internal::ext_visv8_log_java_prop_set(internal_isolate, call_site, *obj, *prop, *value);
++                        }
++
++void visv8_log_java_prop_get(Isolate *isolate, int call_site,
++                        v8::Local<v8::Object> local_obj,
++                        v8::Local<v8::Object> local_prop,
++                        v8::Local<v8::Object> local_value) {
++                          v8::internal::Isolate* internal_isolate = ConvertToInternalIsolate(isolate);
++                          internal::DirectHandle<v8::internal::Object> obj = Utils::OpenDirectHandle(*local_obj);
++                          internal::DirectHandle<v8::internal::Object> prop = Utils::OpenDirectHandle(*local_prop);
++                          internal::DirectHandle<v8::internal::Object> value = Utils::OpenDirectHandle(*local_value);
++                          internal::ext_visv8_log_java_prop_get(internal_isolate, call_site, *obj, *prop, *value);
++                        }
++
+ }  // namespace v8
+ 
+ #ifdef ENABLE_SLOW_DCHECKS
 diff --git a/src/builtins/builtins-api.cc b/src/builtins/builtins-api.cc
 index 822d5a332ef..fe71e44b52c 100644
 --- a/src/builtins/builtins-api.cc
@@ -784,7 +917,7 @@ index 7d97d4b4f1a..13f89c394dc 100644
    LanguageMode language_mode = static_cast<LanguageMode>(args.smi_value_at(3));
    DirectHandle<SharedFunctionInfo> outer_info(args.at<JSFunction>(2)->shared(),
 diff --git a/src/runtime/runtime-test.cc b/src/runtime/runtime-test.cc
-index 3a46134aa35..f42919f51f9 100644
+index 3a46134aa35..b1e95079c74 100644
 --- a/src/runtime/runtime-test.cc
 +++ b/src/runtime/runtime-test.cc
 @@ -2,16 +2,30 @@
@@ -818,11 +951,12 @@ index 3a46134aa35..f42919f51f9 100644
  #include "src/codegen/compiler.h"
  #include "src/codegen/pending-optimization-table.h"
  #include "src/compiler-dispatcher/lazy-compile-dispatcher.h"
-@@ -40,10 +54,18 @@
+@@ -40,10 +54,19 @@
  #include "src/objects/js-atomics-synchronization-inl.h"
  #include "src/objects/js-function-inl.h"
  #include "src/objects/js-regexp-inl.h"
 +#include "src/objects/keys.h"
++#include "src/runtime/runtime-utils.h"
  #include "src/objects/smi.h"
  #include "src/profiler/heap-snapshot-generator.h"
  #include "src/regexp/regexp.h"
@@ -837,9 +971,96 @@ index 3a46134aa35..f42919f51f9 100644
  
  #ifdef V8_ENABLE_MAGLEV
  #include "src/maglev/maglev.h"
-@@ -1614,6 +1636,696 @@ RUNTIME_FUNCTION(Runtime_TraceExit) {
+@@ -1614,6 +1637,82 @@ RUNTIME_FUNCTION(Runtime_TraceExit) {
    return obj;  // return TOS
  }
+ 
++RUNTIME_FUNCTION(Runtime_TracePropertyLoad) {
++  HandleScope hs(isolate);
++  DCHECK_EQ(3, args.length());
++
++  //   CONVERT_ARG_CHECKED(Smi, call_site, 0);
++  //   CONVERT_ARG_CHECKED(Object, obj, 1);
++  //   CONVERT_ARG_CHECKED(Object, prop, 2);
++  Tagged<Object> call_site = args[0];
++  Tagged<Object> obj = args[1];
++  Tagged<Object> prop = args[2];
++
++  v8::internal::visv8_log_property_get(isolate, Smi::ToInt(call_site), obj, prop);
++
++  return ReadOnlyRoots(isolate).undefined_value();
++}
++
++RUNTIME_FUNCTION(Runtime_TracePropertyStore) {
++  HandleScope hs(isolate);
++  //   CONVERT_ARG_CHECKED(Smi, call_site, 0);
++  //   CONVERT_ARG_CHECKED(Object, obj, 1);
++  //   CONVERT_ARG_CHECKED(Object, prop, 2);
++  //   CONVERT_ARG_CHECKED(Object, value, 3);
++
++  Tagged<Object> call_site = args[0];
++  Tagged<Object> obj = args[1];
++  Tagged<Object> prop = args[2];
++  Tagged<Object> value = args[3];
++
++  v8::internal::visv8_log_property_set(isolate, Smi::ToInt(call_site), obj, prop, value);
++
++  return ReadOnlyRoots(isolate).undefined_value();
++}
++
++// Hack to log almost all scripts that have any kind of function call
++RUNTIME_FUNCTION(Runtime_TraceFunctionCall) {
++  return ReadOnlyRoots(isolate).undefined_value();
++}
++
++RUNTIME_FUNCTION(Runtime_VV8TraceKeyedHasIC) {
++  HandleScope shs(isolate);
++  Tagged<Object> obj = Cast<Object>(args[0]);
++  Tagged<Object> prop = Cast<Object>(args[1]);
++
++  v8::internal::visv8_log_property_get(isolate, -1, obj, prop);
++  return ReadOnlyRoots(isolate).undefined_value();
++}
++
++RUNTIME_FUNCTION(Runtime_VV8TraceFunctionCall) {
++  HandleScope shs(isolate);
++  Tagged<JSFunction> target = Cast<JSFunction>(args[0]);
++  Tagged<Smi> argc = Cast<Smi>(args[1]);
++
++  // This peice of code reassembles the mess of a pointer
++  // that we made in HandleApiCallOrConstruct in builtins-call-gen.cc
++  Address argv_ptr_val = 0;
++  for (int i = 2; i < 2 + 4; ++i) {
++    argv_ptr_val <<= 16;
++    CHECK(IsSmi(args[i]));
++    uint32_t chunk = Cast<Smi>(args[i]).value();
++    // We encode 16 bit per chunk only!
++    CHECK_EQ(chunk & 0xFFFF0000, 0);
++    argv_ptr_val |= chunk;
++  }
++
++  int argc_integer = Smi::ToInt(argc) - 1;
++  Tagged<JSReceiver> reciever =
++      (Tagged<JSReceiver>)((Tagged<JSReceiver> *)argv_ptr_val)[-1];
++
++  v8::internal::visv8_log_api_call(isolate, false, target, reciever, (Address *)argv_ptr_val,
++                     argc_integer >= 0 ? argc_integer : 0);
++  return ReadOnlyRoots(isolate).undefined_value();
++}
++
++//------------------------------
++// END VisibleV8
++
+ RUNTIME_FUNCTION(Runtime_HaveSameMap) {
+   SealHandleScope shs(isolate);
+   if (args.length() != 2) {
+diff --git a/src/runtime/runtime-utils.cc b/src/runtime/runtime-utils.cc
+index 36c50ec5001..51e185e3b78 100644
+--- a/src/runtime/runtime-utils.cc
++++ b/src/runtime/runtime-utils.cc
+@@ -29,4 +29,704 @@ SaveAndClearThreadInWasmFlag::~SaveAndClearThreadInWasmFlag() {
+ }
+ #endif
  
 +// BEGIN VisibleV8
 +//------------------------------
@@ -1373,9 +1594,9 @@ index 3a46134aa35..f42919f51f9 100644
 +void visv8_log_property_get(Isolate *isolate, int call_site, Tagged<Object> obj,
 +                            Tagged<Object> prop) {
 +  VisV8Context vctx(isolate);
-+  VisV8Logger vlog(vctx);
 +
 +  if (visv8_should_log_object(obj)) {
++    VisV8Logger vlog(vctx);
 +    // Peek at the call stack to see our offset within the active script
 +    if (call_site < 0) {
 +      DebuggableStackFrameIterator it(isolate);
@@ -1392,30 +1613,14 @@ index 3a46134aa35..f42919f51f9 100644
 +  }
 +}
 +
-+RUNTIME_FUNCTION(Runtime_TracePropertyLoad) {
-+  HandleScope hs(isolate);
-+  DCHECK_EQ(3, args.length());
-+
-+  //   CONVERT_ARG_CHECKED(Smi, call_site, 0);
-+  //   CONVERT_ARG_CHECKED(Object, obj, 1);
-+  //   CONVERT_ARG_CHECKED(Object, prop, 2);
-+  Tagged<Object> call_site = args[0];
-+  Tagged<Object> obj = args[1];
-+  Tagged<Object> prop = args[2];
-+
-+  visv8_log_property_get(isolate, Smi::ToInt(call_site), obj, prop);
-+
-+  return ReadOnlyRoots(isolate).undefined_value();
-+}
-+
 +// Helper to log property set (for easy extern access by the Reflect.set
 +// builtin)
 +void visv8_log_property_set(Isolate *isolate, int call_site, Tagged<Object> obj,
 +                            Tagged<Object> prop, Tagged<Object> value) {
 +  VisV8Context vctx(isolate);
-+  VisV8Logger vlog(vctx);
 +
 +  if (visv8_should_log_object(obj)) {
++    VisV8Logger vlog(vctx);
 +    // Peek at the call stack to see our offset within the active script
 +    if (call_site < 0) {
 +      DebuggableStackFrameIterator it(isolate);
@@ -1432,31 +1637,6 @@ index 3a46134aa35..f42919f51f9 100644
 +    visv8_to_string(isolate, vlog.out(), value);
 +    vlog.out() << '\n';
 +  }
-+}
-+
-+RUNTIME_FUNCTION(Runtime_TracePropertyStore) {
-+  HandleScope hs(isolate);
-+  //   CONVERT_ARG_CHECKED(Smi, call_site, 0);
-+  //   CONVERT_ARG_CHECKED(Object, obj, 1);
-+  //   CONVERT_ARG_CHECKED(Object, prop, 2);
-+  //   CONVERT_ARG_CHECKED(Object, value, 3);
-+
-+  Tagged<Object> call_site = args[0];
-+  Tagged<Object> obj = args[1];
-+  Tagged<Object> prop = args[2];
-+  Tagged<Object> value = args[3];
-+
-+  visv8_log_property_set(isolate, Smi::ToInt(call_site), obj, prop, value);
-+
-+  return ReadOnlyRoots(isolate).undefined_value();
-+}
-+
-+// Hack to log almost all scripts that have any kind of function call
-+RUNTIME_FUNCTION(Runtime_TraceFunctionCall) {
-+  VisV8Context vctx(isolate);
-+  VisV8Logger vlog(vctx);
-+
-+  return ReadOnlyRoots(isolate).undefined_value();
 +}
 +
 +// Special hack to allow callbacks from HandleApiCall hooks
@@ -1493,49 +1673,247 @@ index 3a46134aa35..f42919f51f9 100644
 +  }
 +}
 +
-+RUNTIME_FUNCTION(Runtime_VV8TraceKeyedHasIC) {
-+  HandleScope shs(isolate);
-+  Tagged<Object> obj = Cast<Object>(args[0]);
-+  Tagged<Object> prop = Cast<Object>(args[1]);
++void visv8_log_java_prop_get(Isolate *isolate, int call_site, Tagged<Object> obj, Tagged<Object> prop, Tagged<Object> value) {
 +
-+  visv8_log_property_get(isolate, -1, obj, prop);
-+  return ReadOnlyRoots(isolate).undefined_value();
-+}
++  if (visv8_should_log_object(obj)) {
++    VisV8Context vctx(isolate);
++    VisV8Logger vlog(vctx);
++    // Peek at the call stack to see our offset within the active script
++    if (call_site < 0) {
++      DebuggableStackFrameIterator it(isolate);
++      if (!it.done()) {
++        call_site = it.frame()->position();
++      }
++    }
 +
-+RUNTIME_FUNCTION(Runtime_VV8TraceFunctionCall) {
-+  HandleScope shs(isolate);
-+  Tagged<JSFunction> target = Cast<JSFunction>(args[0]);
-+  Tagged<Smi> argc = Cast<Smi>(args[1]);
-+
-+  // This peice of code reassembles the mess of a pointer
-+  // that we made in HandleApiCallOrConstruct in builtins-call-gen.cc
-+  Address argv_ptr_val = 0;
-+  for (int i = 2; i < 2 + 4; ++i) {
-+    argv_ptr_val <<= 16;
-+    CHECK(IsSmi(args[i]));
-+    uint32_t chunk = Cast<Smi>(args[i]).value();
-+    // We encode 16 bit per chunk only!
-+    CHECK_EQ(chunk & 0xFFFF0000, 0);
-+    argv_ptr_val |= chunk;
++    vlog.out() << 'j' << call_site << ':';
++    vlog.out() << 'g' << ':';
++    visv8_to_string(isolate, vlog.out(), obj);
++    vlog.out() << ':';
++    visv8_to_string(isolate, vlog.out(), prop);
++    vlog.out() << ':';
++    visv8_to_string(isolate, vlog.out(), value);
++    vlog.out() << '\n';
 +  }
-+
-+  int argc_integer = Smi::ToInt(argc) - 1;
-+  Tagged<JSReceiver> reciever =
-+      (Tagged<JSReceiver>)((Tagged<JSReceiver> *)argv_ptr_val)[-1];
-+
-+  visv8_log_api_call(isolate, false, target, reciever, (Address *)argv_ptr_val,
-+                     argc_integer >= 0 ? argc_integer : 0);
-+  return ReadOnlyRoots(isolate).undefined_value();
 +}
 +
-+//------------------------------
-+// END VisibleV8
++void visv8_log_java_prop_set(Isolate *isolate, int call_site, Tagged<Object> obj, Tagged<Object> prop, Tagged<Object> value) {
 +
- RUNTIME_FUNCTION(Runtime_HaveSameMap) {
-   SealHandleScope shs(isolate);
-   if (args.length() != 2) {
++  if (visv8_should_log_object(obj)) {
++    VisV8Context vctx(isolate);
++    VisV8Logger vlog(vctx);
++    // Peek at the call stack to see our offset within the active script
++    if (call_site < 0) {
++      DebuggableStackFrameIterator it(isolate);
++      if (!it.done()) {
++        call_site = it.frame()->position();
++      }
++    }
++
++    vlog.out() << 'j' << call_site << ':';
++    vlog.out() << 's' << ':';
++    visv8_to_string(isolate, vlog.out(), obj);
++    vlog.out() << ':';
++    visv8_to_string(isolate, vlog.out(), prop);
++    vlog.out() << ':';
++    visv8_to_string(isolate, vlog.out(), value);
++    vlog.out() << '\n';
++  }
++}
++
++void visv8_log_java_api_call(Isolate *isolate, bool is_constructor,
++                        Tagged<String> func,
++                        Tagged<Object> receiver,
++                        Tagged<Object> result,
++                        std::vector<Tagged<Object>> *argv, int argc) {
++
++  int call_site = -1;
++  VisV8Context vctx(isolate);
++
++  // Do all this logging business ONLY if we are NOT recursive
++  if (!vctx.is_recursive()) {
++    VisV8Logger vlog(vctx);
++
++    // Peek at the call stack to see our offset within the active script
++    DebuggableStackFrameIterator it(isolate);
++    if (!it.done()) {
++      call_site = it.frame()->position();
++    }
++
++    vlog.out() << 'j' << call_site << ':';
++    if (is_constructor) {
++      vlog.out() << 'n' << ':';
++      visv8_to_string(isolate, vlog.out(), func);
++    } else {
++      vlog.out() << 'c' << ':';
++      vlog.out() << "%<anonymous>";
++      vlog.out() << ':';
++      visv8_to_string(isolate, vlog.out(), receiver);
++      vlog.out() << ':';
++      visv8_to_string(isolate, vlog.out(), result, true, -1, true);
++    }
++    for (int i = 0; i < argc; ++i) {
++      vlog.out() << ':';
++      vlog.out() << (*argv)[i];
++      visv8_to_string(isolate, vlog.out(), (*argv)[i], true, -1,
++                      true);
++    }
++    vlog.out() << '\n';
++  }
++}
++
+ }  // namespace v8::internal
+diff --git a/src/runtime/runtime-utils.h b/src/runtime/runtime-utils.h
+index 5863934d5f5..3452e06ca12 100644
+--- a/src/runtime/runtime-utils.h
++++ b/src/runtime/runtime-utils.h
+@@ -6,6 +6,78 @@
+ #define V8_RUNTIME_RUNTIME_UTILS_H_
+ 
+ #include "src/objects/objects.h"
++#include <pthread.h>
++#include <signal.h>
++#include <stdio.h>
++#include <sys/syscall.h> // Horrible VisV8 hack--forgive me...
++#include <unistd.h>
++
++#include <algorithm>
++#include <cstdint>
++#include <fstream>
++#include <iomanip>
++#include <memory>
++#include <mutex>
++#include <sstream>
++#include <string>
++#include <strstream>
++#include <vector>
++
++#include "build/build_config.h"
++#include "include/v8-function.h"
++#include "include/v8-profiler.h"
++#include "src/api/api-inl.h"
++#include "src/base/macros.h"
++#include "src/base/numbers/double.h"
++#include "src/builtins/builtins-utils.h"
++#include "src/codegen/compiler.h"
++#include "src/codegen/pending-optimization-table.h"
++#include "src/compiler-dispatcher/lazy-compile-dispatcher.h"
++#include "src/compiler-dispatcher/optimizing-compile-dispatcher.h"
++#include "src/debug/debug-evaluate.h"
++#include "src/deoptimizer/deoptimizer.h"
++#include "src/execution/arguments-inl.h"
++#include "src/execution/frames-inl.h"
++#include "src/execution/frames.h"
++#include "src/execution/isolate-inl.h"
++#include "src/execution/protectors-inl.h"
++#include "src/execution/tiering-manager.h"
++#include "src/flags/flags.h"
++#include "src/heap/heap-layout-inl.h"
++#include "src/heap/heap-write-barrier-inl.h"
++#include "src/heap/pretenuring-handler-inl.h"
++#include "src/ic/stub-cache.h"
++#include "src/objects/bytecode-array.h"
++#include "src/objects/js-collection-inl.h"
++#include "src/profiler/heap-profiler.h"
++#include "src/utils/utils.h"
++#include "src/handles/handles.h"
++#ifdef V8_ENABLE_MAGLEV
++#include "src/maglev/maglev-concurrent-dispatcher.h"
++#endif  // V8_ENABLE_MAGLEV
++#include "src/objects/js-atomics-synchronization-inl.h"
++#include "src/objects/js-function-inl.h"
++#include "src/objects/js-regexp-inl.h"
++#include "src/objects/keys.h"
++#include "src/objects/smi.h"
++#include "src/profiler/heap-snapshot-generator.h"
++#include "src/regexp/regexp.h"
++#include "src/snapshot/snapshot.h"
++#include "v8-local-handle.h" // NOLINT(build/include_directory)
++#include "v8-primitive.h"    // NOLINT(build/include_directory)
++#include "v8config.h"        // NOLINT(build/include_directory)
++
++#if BUILDFLAG(IS_ANDROID)
++#include <sys/prctl.h>
++#endif
++
++#ifdef V8_ENABLE_MAGLEV
++#include "src/maglev/maglev.h"
++#endif  // V8_ENABLE_MAGLEV
++
++#if V8_ENABLE_WEBASSEMBLY
++#include "src/wasm/wasm-engine.h"
++#endif  // V8_ENABLE_WEBASSEMBLY
+ 
+ namespace v8 {
+ namespace internal {
+@@ -59,6 +131,33 @@ class V8_NODISCARD [[maybe_unused]] SaveAndClearThreadInWasmFlag {
+ #endif
+ };
+ 
++void visv8_log_property_get(Isolate *isolate, int call_site, Tagged<Object> obj,
++                            Tagged<Object> prop);
++
++void visv8_log_api_call(Isolate *isolate, bool is_constructor,
++                        Tagged<HeapObject> func, Tagged<Object> receiver,
++                        Address *argv, int argc);
++
++void visv8_log_property_set(Isolate *isolate, int call_site, Tagged<Object> obj,
++                            Tagged<Object> prop, Tagged<Object> value);
++
++void visv8_log_java_api_call(Isolate *isolate, bool is_constructor,
++                        Tagged<String> local_func,
++                        Tagged<Object> local_receiver,
++                        Tagged<Object> local_result,
++                        std::vector<Tagged<Object>> *argv, int argc);
++
++void visv8_log_java_prop_set(Isolate *isolate, int call_site,
++                        Tagged<Object> local_obj, 
++                        Tagged<Object> local_prop, 
++                        Tagged<Object> local_value);
++
++void visv8_log_java_prop_get(Isolate *isolate, int call_site,
++                        Tagged<Object> local_obj,
++                        Tagged<Object> local_prop,
++                        Tagged<Object> local_value);
++
++
+ }  // namespace internal
+ }  // namespace v8
+ 
+diff --git a/src/runtime/runtime.cc b/src/runtime/runtime.cc
+index ce934899c32..8071e18bb6d 100644
+--- a/src/runtime/runtime.cc
++++ b/src/runtime/runtime.cc
+@@ -380,5 +380,27 @@ std::ostream& operator<<(std::ostream& os, Runtime::FunctionId id) {
+ 
+ int g_num_isolates_for_testing = 1;
+ 
++void ext_visv8_log_java_api_call(Isolate *isolate, bool is_constructor,
++                        Tagged<String> local_func,
++                        Tagged<Object> local_receiver,
++                        Tagged<Object> local_result,
++                        std::vector<Tagged<Object>> *argv, int argc) {
++                          visv8_log_java_api_call(isolate, is_constructor, local_func, local_receiver, local_result, argv, argc);
++                        }
++
++void ext_visv8_log_java_prop_set(Isolate *isolate, int call_site,
++                        Tagged<Object> local_obj, 
++                        Tagged<Object> local_prop, 
++                        Tagged<Object> local_value) {
++                          visv8_log_java_prop_set(isolate, call_site, local_obj, local_prop, local_value);
++                        }
++
++void ext_visv8_log_java_prop_get(Isolate *isolate, int call_site,
++                        Tagged<Object> local_obj,
++                        Tagged<Object> local_prop,
++                        Tagged<Object> local_value) {
++                          visv8_log_java_prop_get(isolate, call_site, local_obj, local_prop, local_value);
++                        }
++
+ }  // namespace internal
+ }  // namespace v8
 diff --git a/src/runtime/runtime.h b/src/runtime/runtime.h
-index 3c3f6dda889..fbf5f1b59a8 100644
+index 3c3f6dda889..cfb163e0d5b 100644
 --- a/src/runtime/runtime.h
 +++ b/src/runtime/runtime.h
 @@ -562,6 +562,8 @@ constexpr bool CanTriggerGC(T... properties) {
@@ -1557,3 +1935,29 @@ index 3c3f6dda889..fbf5f1b59a8 100644
    F(TurbofanStaticAssert, 1, 1)                                          \
    F(TypedArraySpeciesProtector, 0, 1)                                    \
    F(WaitForBackgroundOptimization, 0, 1)                                 \
+@@ -1119,6 +1124,22 @@ enum class OptimizationStatus {
+ // The number of isolates used for testing in d8.
+ V8_EXPORT_PRIVATE extern int g_num_isolates_for_testing;
+ 
++V8_EXPORT extern void ext_visv8_log_java_api_call(Isolate *isolate, bool is_constructor,
++                        Tagged<String> local_func,
++                        Tagged<Object> local_receiver,
++                        Tagged<Object> local_result,
++                        std::vector<v8::internal::Tagged<v8::internal::Object>> *argv, int argc);
++
++V8_EXPORT extern void ext_visv8_log_java_prop_set(Isolate *isolate, int call_site,
++                        Tagged<Object> local_obj, 
++                        Tagged<Object> local_prop, 
++                        Tagged<Object> local_value);
++
++V8_EXPORT extern void ext_visv8_log_java_prop_get(Isolate *isolate, int call_site,
++                        Tagged<Object> local_obj,
++                        Tagged<Object> local_prop,
++                        Tagged<Object> local_value);
++
+ }  // namespace internal
+ }  // namespace v8
+ 
+-- 
+2.43.0
+
