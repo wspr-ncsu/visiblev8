@@ -3,15 +3,18 @@ set -ex
 
 # the visiblev8 repository that will be mounted in the container
 VV8_DIR="$(dirname `pwd`)"
+DEFAULT=${2:-""}
 VERSION=${1:-""}
-DEBUG=${2:-""}
-PUBLISH_ASSETS=${3:-""}
-TESTS=${4:-""}
-ANDROID=${5:-""}
-ARM=${6:-""}
+DEBUG=${3:-""}
+PUBLISH_ASSETS=${4:-""}
+TESTS=${5:-""}
+ANDROID=${6:-""}
+ARM=${7:-""}
+WEBVIEW=${8:-""}
+IDLDATA=${9:-""}
 
 docker build --platform linux/amd64 -t build-direct -f build-direct.dockerfile .
-docker run --platform linux/amd64 -i -v $(pwd)/artifacts:/artifacts -v $(pwd)/build:/build -v $VV8_DIR:/build/visiblev8 build-direct $VERSION $DEBUG $ANDROID $ARM
+docker run --platform linux/amd64 -i -v $(pwd)/artifacts:/artifacts -v $(pwd)/build:/build -v $VV8_DIR:/build/visiblev8 build-direct "$VERSION" "$DEFAULT" "$DEBUG" "$ANDROID" "$ARM" "$WEBVIEW" "$IDLDATA"
 
 [ ! -d $ARTIFACT_DIR ] && echo "No artifacts. Please build visiblev8 first and place all artifacts in $ARTIFACT_DIR" && exit 1;
 PACKAGE_NAME_AMD64=`find ./artifacts -name '*amd64.deb' -printf "%f\n" | sort -V | tail -n 1`

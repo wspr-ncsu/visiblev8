@@ -1,9 +1,12 @@
 #!/bin/bash
 set -ex
 
+DEFAULT=1
 DEBUG=0
 ANDROID=0
 ARM=0
+WEBVIEW=0
+IDLDATA=1
 
 get_latest_patch_version() {
     # get the latest patch version available and set LAST_PATCH
@@ -51,19 +54,34 @@ else
     VERSION=$1
 fi
 
-if [[ "$2" -eq 1 ]]; then
+if [[ "$2" -eq 0 ]]; then
+    echo "Default mode is off"
+    DEFAULT=0
+fi
+
+if [[ "$3" -eq 1 ]]; then
     echo "Debug mode is on"
     DEBUG=1
 fi
 
-if [[ "$3" -eq 1 ]]; then
+if [[ "$4" -eq 1 ]]; then
     echo "Android version of VisibleV8 will be built"
     ANDROID=1
 fi
 
-if [[ "$4" -eq 1 ]]; then
+if [[ "$5" -eq 1 ]]; then
     echo "ARM version of VisibleV8 will be built"
     ARM=1
+fi
+
+if [[ "$6" -eq 1 ]]; then
+    echo "Building System WebView version of VisibleV8"
+    WEBVIEW=1
+fi
+
+if [[ "$7" -eq 0 ]]; then
+    echo "Dumping IDL data to JSON is off"
+    IDLDATA=0
 fi
 
 WD="/tmp/$VERSION"
@@ -119,14 +137,11 @@ echo "Using $LAST_V8_PATCH_FILE to patch V8"
 # "Run `docker commit $(docker ps -q -l) patch-failed` to analyze the failed patches."
 patch -p1 <$LAST_V8_PATCH_FILE || { echo "Patching Chromium $VERSION with $LAST_V8_PATCH_FILE failed. Exiting!" ; exit 42; }
 
-### Build config
-[ ! -d $WD/src/out/Release ] && mkdir -p $WD/src/out/Release
-# we need to provide the correct build args to enable targets like chrome/installer/linux:stable_deb
-
 cd $WD/src
-
-if [ "$DEBUG" -eq "0" ]; then
-    # production args
+if [ "$DEFAULT" -eq "1" ]; then
+    [ ! -d $WD/src/out/Release ] && mkdir -p $WD/src/out/Release
+    if [ "$DEBUG" -eq "0" ]; then
+        # production args
     cat >>out/Release/args.gn <<EOL
 enable_nacl=false
 dcheck_always_on=false
@@ -165,7 +180,7 @@ fi
 gn gen out/Release
 
 # building
-autoninja -C out/Release chrome d8 wasm_api_tests cctest inspector-test v8_unittests v8_mjsunit v8_shell icudtl.dat snapshot_blob.bin web_idl_database chrome/installer/linux:stable_deb
+autoninja -C out/Release chrome d8 wasm_api_tests cctest inspector-test v8_unittests v8_mjsunit v8_shell icudtl.dat snapshot_blob.bin chrome/installer/linux:stable_deb
 
 # copy artifacts
 mkdir -p /artifacts/$VERSION/
@@ -179,13 +194,40 @@ cp out/Release/snapshot_blob.bin /artifacts/$VERSION/
 cp out/Release/gen/third_party/blink/renderer/bindings/web_idl_database.pickle /artifacts/$VERSION/
 # cp out/Release/natives_blob.bin /artifacts/$VERSION/
 chmod +rw -R /artifacts
+fi
 
+if [ "$IDLDATA" -eq "1" ]; then
+    [ ! -d $WD/src/out/Release ] && mkdir -p $WD/src/out/Release
+    cat >>out/Release/args.gn <<EOL
+is_debug=true
+dcheck_always_on=true
+disable_fieldtrial_testing_config=true
+enable_nacl=false
+is_component_build=false
+enable_linux_installer=true
+v8_enable_debugging_features=true
+v8_enable_object_print=true
+v8_optimized_debug=false
+v8_enable_backtrace=true
+v8_postmortem_support=true
+v8_use_external_startup_data=false
+v8_enable_i18n_support=false
+v8_static_library=true
+v8_use_external_startup_data=true
+EOL
+
+gn gen out/Release
+
+# building
+autoninja -C out/Release web_idl_database
+    
 # Dump IDL data into a JSON file
 # version 98.0.4710.4 is where they appear to have changed to pickle file builds, so check if the version is less than that
 # and run the old script, otherwise run the new one
 [  "98.0.4710.4" != "`echo -e "98.0.4710.4\n$VERSION" | sort -V | head -n1`" ]  \
     && $VV8/builder/resources/build/dump_idl.py "$WD/src" > "/artifacts/$VERSION/idldata.json" \
     || python3 $VV8/builder/resources/build/visiblev8_idl_generator.py --chrome-root "$WD/src" > "/artifacts/$VERSION/idldata.json"
+fi
 
 rm -rf out/Release
 
@@ -223,7 +265,9 @@ EOL
     cp -r out/Android/apks/ChromePublic.apk /artifacts/$VERSION/ChromePublic-vv8-$VERSION.apk
     
     chmod ugo+r /artifacts/$VERSION/ChromePublic-vv8-$VERSION.apk
-
+    fi
+if [ "$WEBVIEW" -eq "1" ]; then
+    [ ! -d $WD/src/out/Android ] && mkdir -p $WD/src/out/Android
     cat >>out/Android/args.gn <<EOL
 target_os = "android"
 target_cpu = "arm64"
