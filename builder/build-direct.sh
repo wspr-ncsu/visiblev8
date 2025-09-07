@@ -143,7 +143,6 @@ if [ "$DEFAULT" -eq "1" ]; then
     if [ "$DEBUG" -eq "0" ]; then
         # production args
     cat >>out/Release/args.gn <<EOL
-enable_nacl=false
 dcheck_always_on=false
 is_debug=false
 disable_fieldtrial_testing_config=true
@@ -199,20 +198,15 @@ fi
 if [ "$IDLDATA" -eq "1" ]; then
     [ ! -d $WD/src/out/Release ] && mkdir -p $WD/src/out/Release
     cat >>out/Release/args.gn <<EOL
-is_debug=true
-dcheck_always_on=true
+dcheck_always_on=false
+is_debug=false
 disable_fieldtrial_testing_config=true
-enable_nacl=false
-is_component_build=false
+is_official_build=true
 enable_linux_installer=true
-v8_enable_debugging_features=true
-v8_enable_object_print=true
-v8_optimized_debug=false
-v8_enable_backtrace=true
-v8_postmortem_support=true
-v8_use_external_startup_data=false
-v8_enable_i18n_support=false
-v8_static_library=true
+is_component_build = false
+use_thin_lto=false
+is_cfi=false
+chrome_pgo_phase=0
 v8_use_external_startup_data=true
 EOL
 
