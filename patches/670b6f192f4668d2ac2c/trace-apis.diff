@@ -1,0 +1,202 @@
+From 6e64ba412ad091aa4e19d2e490a2a2cebbc6c265 Mon Sep 17 00:00:00 2001
+From: Sohom <sdatta4@ncsu.edu>
+Date: Sat, 6 Sep 2025 20:56:34 -0400
+Subject: [PATCH] Add VisibleV8 support for Chrome 140
+
+---
+ .../base/process_launcher/BindService.java    |  2 +-
+ chrome/android/java/AndroidManifest.xml       |  4 +-
+ .../java/gin_java_method_invocation_helper.cc |  2 +
+ .../gin_java_function_invocation_helper.cc    | 46 ++++++++++++++++++-
+ content/renderer/renderer_main.cc             |  3 +-
+ .../modules/remote_objects/remote_object.cc   |  1 +
+ .../renderer/platform/bindings/v8_binding.h   |  1 +
+ v8                                            |  2 +-
+ 8 files changed, 54 insertions(+), 7 deletions(-)
+
+diff --git a/base/android/java/src/org/chromium/base/process_launcher/BindService.java b/base/android/java/src/org/chromium/base/process_launcher/BindService.java
+index e9c211fc0e9b7..73b9a3c0341df 100644
+--- a/base/android/java/src/org/chromium/base/process_launcher/BindService.java
++++ b/base/android/java/src/org/chromium/base/process_launcher/BindService.java
+@@ -32,7 +32,7 @@ public final class BindService {
+ 
+     static boolean supportVariableConnections() {
+         return Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+-                && !BuildConfig.IS_INCREMENTAL_INSTALL;
++                && !true;  // VisibleV8 android change required disabling renderer isolation.
+     }
+ 
+     // Note that handler is not guaranteed to be used, and client still need to correctly handle
+diff --git a/chrome/android/java/AndroidManifest.xml b/chrome/android/java/AndroidManifest.xml
+index 1ede201706cec..820ba3e15bf8e 100644
+--- a/chrome/android/java/AndroidManifest.xml
++++ b/chrome/android/java/AndroidManifest.xml
+@@ -1257,13 +1257,13 @@ by a child template that "extends" this file.
+       <service android:name="org.chromium.content.app.SandboxedProcessService{{ i }}"
+           android:process=":sandboxed_process{{ i }}"
+           android:permission="{{ manifest_package }}.permission.CHILD_SERVICE"
+-          android:isolatedProcess="true"
++          android:isolatedProcess="false"
+           android:exported="{{sandboxed_service_exported|default(false)}}"
+           {% if (i == 0) %}
+           android:useAppZygote="true"
+           {% endif %}
+           {% if (sandboxed_service_exported|default(false)) == 'true' %}
+-          android:externalService="true"
++          android:externalService="false"
+           tools:ignore="ExportedService"
+           android:visibleToInstantApps="true"
+           {% endif %} />
+diff --git a/content/browser/android/java/gin_java_method_invocation_helper.cc b/content/browser/android/java/gin_java_method_invocation_helper.cc
+index 2d0c3dd4eb754..5c331d1bd1eb9 100644
+--- a/content/browser/android/java/gin_java_method_invocation_helper.cc
++++ b/content/browser/android/java/gin_java_method_invocation_helper.cc
+@@ -12,6 +12,8 @@
+ #include "base/android/event_log.h"
+ #include "base/android/jni_android.h"
+ #include "base/android/jni_string.h"
++#include "base/logging.h"
++#include "base/debug/stack_trace.h"
+ #include "content/browser/android/java/gin_java_script_to_java_types_coercion.h"
+ #include "content/browser/android/java/java_method.h"
+ #include "content/common/android/gin_java_bridge_value.h"
+diff --git a/content/renderer/java/gin_java_function_invocation_helper.cc b/content/renderer/java/gin_java_function_invocation_helper.cc
+index 124d40ab0e419..116ff2c0cd221 100644
+--- a/content/renderer/java/gin_java_function_invocation_helper.cc
++++ b/content/renderer/java/gin_java_function_invocation_helper.cc
+@@ -14,6 +14,7 @@
+ #include "content/renderer/java/gin_java_bridge_object.h"
+ #include "content/renderer/java/gin_java_bridge_value_converter.h"
+ #include "v8/include/v8-exception.h"
++#include "v8/include/v8-visiblev8.h"
+ 
+ namespace content {
+ 
+@@ -79,6 +80,13 @@ v8::Local<v8::Value> GinJavaFunctionInvocationHelper::Invoke(
+     }
+   }
+ 
++  std::vector<v8::Local<v8::Value>> visv8_args;
++
++  v8::Local<v8::Value> val;
++  while (args->GetNext(&val)) {
++    visv8_args.push_back(val);
++  }
++
+   mojom::GinJavaBridgeError error =
+       mojom::GinJavaBridgeError::kGinJavaBridgeNoError;
+ 
+@@ -95,12 +103,24 @@ v8::Local<v8::Value> GinJavaFunctionInvocationHelper::Invoke(
+     }
+   }
+   if (!result.get()) {
++    auto* functionCallbackInfo = args->GetFunctionCallbackInfo();
++    v8::visv8_log_java_api_call(
++        args->isolate(), false, functionCallbackInfo->Data().As<v8::String>(),
++        functionCallbackInfo->This().As<v8::Object>(),
++        v8::Undefined(args->isolate()), visv8_args, visv8_args.size());
+     args->isolate()->ThrowException(v8::Exception::Error(gin::StringToV8(
+         args->isolate(), base::StrCat({"Error invoking ", method_name_, ": ",
+                                        GinJavaBridgeErrorToString(error)}))));
+     return v8::Undefined(args->isolate());
+   }
+   if (!result->is_blob()) {
++    auto* functionCallbackInfo = args->GetFunctionCallbackInfo();
++    v8::visv8_log_java_api_call(
++        args->isolate(), false, functionCallbackInfo->Data().As<v8::String>(),
++        functionCallbackInfo->This().As<v8::Object>(),
++        converter_->ToV8Value(result.get(),
++                              args->isolate()->GetCurrentContext()),
++        visv8_args, visv8_args.size());
+     return converter_->ToV8Value(result.get(),
+                                  args->isolate()->GetCurrentContext());
+   }
+@@ -116,15 +136,39 @@ v8::Local<v8::Value> GinJavaFunctionInvocationHelper::Invoke(
+     if (object_result) {
+       gin::Handle<GinJavaBridgeObject> controller =
+           gin::CreateHandle(args->isolate(), object_result);
+-      if (controller.IsEmpty())
++      if (controller.IsEmpty()) {
++        auto* functionCallbackInfo = args->GetFunctionCallbackInfo();
++        v8::visv8_log_java_api_call(
++            args->isolate(), false,
++            functionCallbackInfo->Data().As<v8::String>(),
++            functionCallbackInfo->This().As<v8::Object>(),
++            v8::Undefined(args->isolate()), visv8_args, visv8_args.size());
+         return v8::Undefined(args->isolate());
++      }
++      auto* functionCallbackInfo = args->GetFunctionCallbackInfo();
++      v8::visv8_log_java_api_call(
++          args->isolate(), false, functionCallbackInfo->Data().As<v8::String>(),
++          functionCallbackInfo->This().As<v8::Object>(), controller.ToV8(),
++          visv8_args, visv8_args.size());
+       return controller.ToV8();
+     }
+   } else if (gin_value->IsType(GinJavaBridgeValue::TYPE_NONFINITE)) {
+     float float_value;
+     gin_value->GetAsNonFinite(&float_value);
++    auto* functionCallbackInfo = args->GetFunctionCallbackInfo();
++    v8::visv8_log_java_api_call(args->isolate(), false,
++                                functionCallbackInfo->Data().As<v8::String>(),
++                                functionCallbackInfo->This().As<v8::Object>(),
++                                v8::Number::New(args->isolate(), float_value),
++                                visv8_args, visv8_args.size());
+     return v8::Number::New(args->isolate(), float_value);
+   }
++
++  auto* functionCallbackInfo = args->GetFunctionCallbackInfo();
++  v8::visv8_log_java_api_call(
++      args->isolate(), false, functionCallbackInfo->Data().As<v8::String>(),
++      functionCallbackInfo->This().As<v8::Object>(),
++      v8::Undefined(args->isolate()), visv8_args, visv8_args.size());
+   return v8::Undefined(args->isolate());
+ }
+ 
+diff --git a/content/renderer/renderer_main.cc b/content/renderer/renderer_main.cc
+index be379335f2294..927b8d2c8568f 100644
+--- a/content/renderer/renderer_main.cc
++++ b/content/renderer/renderer_main.cc
+@@ -220,8 +220,7 @@ int RendererMain(MainFunctionParams parameters) {
+   {
+     content::ContentRendererClient* client = GetContentClient()->renderer();
+     bool should_run_loop = true;
+-    bool need_sandbox =
+-        !command_line.HasSwitch(sandbox::policy::switches::kNoSandbox);
++    bool need_sandbox = false; // VisibleV8 disable sandbox for desktop
+ 
+     if (!need_sandbox) {
+       // The post-sandbox actions still need to happen at some point.
+diff --git a/third_party/blink/renderer/modules/remote_objects/remote_object.cc b/third_party/blink/renderer/modules/remote_objects/remote_object.cc
+index 1a477777b629e..062a7f4883d18 100644
+--- a/third_party/blink/renderer/modules/remote_objects/remote_object.cc
++++ b/third_party/blink/renderer/modules/remote_objects/remote_object.cc
+@@ -6,6 +6,7 @@
+ 
+ #include <tuple>
+ 
++#include "base/logging.h"
+ #include "base/numerics/safe_conversions.h"
+ #include "gin/converter.h"
+ #include "third_party/blink/public/web/blink.h"
+diff --git a/third_party/blink/renderer/platform/bindings/v8_binding.h b/third_party/blink/renderer/platform/bindings/v8_binding.h
+index 4c7d81cd06492..bd023d9841c10 100644
+--- a/third_party/blink/renderer/platform/bindings/v8_binding.h
++++ b/third_party/blink/renderer/platform/bindings/v8_binding.h
+@@ -50,6 +50,7 @@
+ #include "v8/include/v8-maybe.h"
+ #include "v8/include/v8-persistent-handle.h"
+ #include "v8/include/v8-primitive.h"
++#include "v8/include/v8-visiblev8.h"
+ #include "v8/include/v8-value.h"
+ 
+ namespace blink {
+diff --git a/v8 b/v8
+index fdb12b460f148..30ad1e968d3db 160000
+--- a/v8
++++ b/v8
+@@ -1 +1 @@
+-Subproject commit fdb12b460f148895f6af2ff0e0d870ff8889f154
++Subproject commit 30ad1e968d3dbbb11b120396f14f6b94fb689056
+-- 
+2.43.0
+
