@@ -78,7 +78,7 @@ jobs:
           env:
             VERSION: ${{ steps.get_release.outputs.chromeReleaseVersion }}
           run: |
-            cd builder && make build VERSION=$VERSION DEBUG=0 PUBLISH_ASSETS=0 TESTS=1 ANDROID=1 ARM=1
+            cd builder && make build VERSION=$VERSION DEFAULT=1 DEBUG=0 PUBLISH_ASSETS=0 TESTS=1 ANDROID=1 ARM=1 WEBVIEW=1 IDLDATA=1
         - name: Get VV8 artifact name
           if: steps.shouldPublish.outputs.shouldPublish == 'true'
           id: artifact_name
