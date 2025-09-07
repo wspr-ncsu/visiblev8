@@ -1,4 +1,4 @@
-From 79afc4ef69a178cb82625f26e68e1141a3514f5f Mon Sep 17 00:00:00 2001
+From 5ce1612aeb48b4a9a716593e3ef3b83761dcfa9a Mon Sep 17 00:00:00 2001
 From: Sohom <sdatta4@ncsu.edu>
 Date: Sat, 6 Sep 2025 20:41:45 -0400
 Subject: [PATCH] Add VisibleV8 support for Chrome 140
@@ -6,26 +6,30 @@ Subject: [PATCH] Add VisibleV8 support for Chrome 140
 ---
  BUILD.bazel                           |   1 +
  BUILD.gn                              |  12 +-
- src/api/api.cc                        |  53 +++++++
+ include/v8-visiblev8.h                |  31 ++
+ src/api/api.cc                        |  53 ++
  src/builtins/builtins-api.cc          |   8 +
- src/builtins/builtins-call-gen.cc     |  14 ++
- src/builtins/builtins-function.cc     |  10 ++
+ src/builtins/builtins-call-gen.cc     |  14 +
+ src/builtins/builtins-function.cc     |  10 +
  src/builtins/builtins-global.cc       |   8 +
  src/builtins/builtins-reflect.cc      |   6 +
- src/builtins/reflect.tq               |   9 ++
- src/compiler/js-call-reducer.cc       | 217 +-------------------------
+ src/builtins/reflect.tq               |   9 +
+ src/compiler/js-call-reducer.cc       | 217 +-------
  src/ic/accessor-assembler.cc          |   2 +
  src/init/v8.cc                        |   2 +
- src/interpreter/bytecode-generator.cc | 125 ++++++++++++++-
- src/objects/objects-inl.h             |   9 ++
- src/objects/objects.cc                |  87 +++++++++++
+ src/interpreter/bytecode-generator.cc | 125 ++++-
+ src/objects/objects-inl.h             |   9 +
+ src/objects/objects.cc                |  87 ++++
  src/objects/objects.h                 |   7 +
- src/runtime/runtime-compiler.cc       |   9 ++
- src/runtime/runtime-test.cc           |  99 ++++++++++++
- src/runtime/runtime-utils.h           |  99 ++++++++++++
- src/runtime/runtime.cc                |  22 +++
- src/runtime/runtime.h                 |  21 +++
- 21 files changed, 602 insertions(+), 218 deletions(-)
+ src/runtime/runtime-compiler.cc       |   9 +
+ src/runtime/runtime-test.cc           |  99 ++++
+ src/runtime/runtime-utils.cc          | 704 ++++++++++++++++++++++++++
+ src/runtime/runtime-utils.h           |  99 ++++
+ src/runtime/runtime.cc                |  22 +
+ src/runtime/runtime.h                 |  21 +
+ 23 files changed, 1337 insertions(+), 218 deletions(-)
+ create mode 100644 include/v8-visiblev8.h
+ create mode 100644 src/runtime/runtime-utils.cc
 
 diff --git a/BUILD.bazel b/BUILD.bazel
 index f7da8ea9b57..c0154158e91 100644
@@ -83,6 +87,44 @@ index 8dda88f8ad8..ac450b80bb0 100644
      "src/runtime/runtime-weak-refs.cc",
      "src/runtime/runtime.cc",
      "src/sandbox/code-pointer-table.cc",
+diff --git a/include/v8-visiblev8.h b/include/v8-visiblev8.h
+new file mode 100644
+index 00000000000..fcc06c8fc91
+--- /dev/null
++++ b/include/v8-visiblev8.h
+@@ -0,0 +1,31 @@
++#ifndef INCLUDE_V8_VISIBLEV8_H_
++#define INCLUDE_V8_VISIBLEV8_H_
++
++#include <vector>
++
++#include "v8-isolate.h"
++#include "v8-local-handle.h"
++#include "v8-value.h"
++
++
++namespace v8 {
++    void visv8_log_java_api_call(Isolate *isolate, bool is_constructor,
++                        v8::Local<String> local_func,
++                        v8::Local<Object> local_receiver,
++                        v8::Local<Value> local_result,
++                        const std::vector<v8::Local<v8::Value>>& argv, int argc);
++
++    void visv8_log_java_prop_set(Isolate *isolate, int call_site,
++                        v8::Local<v8::Object> local_obj, 
++                        v8::Local<v8::Object> local_prop, 
++                        v8::Local<v8::Object> local_value);
++
++    void visv8_log_java_prop_get(Isolate *isolate, int call_site,
++                        v8::Local<v8::Object> local_obj,
++                        v8::Local<v8::Object> local_prop,
++                        v8::Local<v8::Object> local_value);
++
++}
++
++
++#endif  // INCLUDE_V8_VISIBLEV8_H_
+\ No newline at end of file
 diff --git a/src/api/api.cc b/src/api/api.cc
 index d58ef6307e1..4347c13353f 100644
 --- a/src/api/api.cc
@@ -1036,6 +1078,717 @@ index f6e185fde67..5a3be805174 100644
  RUNTIME_FUNCTION(Runtime_HaveSameMap) {
    SealHandleScope shs(isolate);
    if (args.length() != 2) {
+diff --git a/src/runtime/runtime-utils.cc b/src/runtime/runtime-utils.cc
+new file mode 100644
+index 00000000000..aac5ab3f6e2
+--- /dev/null
++++ b/src/runtime/runtime-utils.cc
+@@ -0,0 +1,704 @@
++#include "src/runtime/runtime-utils.h"
++namespace v8::internal {
++
++  // BEGIN VisibleV8
++//------------------------------
++// Fastpath replacement for "PrintUC16" that doesn't rely on snprintf
++static void myPrintUC16(Tagged<String> str, std::ostream &out, int start = 0,
++                        int end = -1) {
++  static char digits[] = "0123456789abcdef";
++  char buff[4096];
++  char *bp = buff;
++  char *bmax = buff + sizeof(buff) - 6; // max length char escape is 6 chars
++
++  if (end < 0)
++    end = str->length();
++  StringCharacterStream src(str, start);
++  for (int i = start; i < end && src.HasMore(); ++i) {
++    auto c = src.GetNext();
++    if (c < ' ') {
++      // Unprintable ASCII ("\xEscaped")
++      *bp++ = '\\';
++      *bp++ = 'x';
++      *bp++ = digits[(c & 0xf0) >> 4];
++      *bp++ = digits[(c & 0x0f)];
++    } else if (c <= '~') {
++      // Printable ASCII
++      if (c == ':' || c == '\\') { // handle escapes for our output delimiter
++        *bp++ = '\\';
++      }
++      *bp++ = (char)c;
++    } else {
++      // UC16 (\UEscaped)
++      *bp++ = '\\';
++      *bp++ = 'u';
++      *bp++ = digits[(c & 0xf000) >> 12];
++      *bp++ = digits[(c & 0x0f00) >> 8];
++      *bp++ = digits[(c & 0x00f0) >> 4];
++      *bp++ = digits[(c & 0x000f)];
++    }
++
++    // Capacity flush
++    if (bp >= bmax) {
++      out.write(buff, bp - buff);
++      bp = buff;
++    }
++  }
++
++  // Remainder flush
++  if (bp > buff) {
++    out.write(buff, bp - buff);
++  }
++}
++
++// Fastpath stringify for something simple (Smi, String, ...)
++// (extracted from various 8-cylinder printing functions around V8, all too
++// general/too slow)
++void visv8_to_string(Isolate *isolate, std::ostream &out, Tagged<Object> obj,
++                     bool quotes = true, int max_len = -1,
++                     bool iter_obj = false) {
++  HandleScope scope(isolate);
++
++  if (IsSmi(obj)) {
++    // Fine, print the stupid integer...
++    out << Cast<Smi>(obj).value();
++  } else {
++    // Determine type of HeapObject...
++    if (IsString(obj)) {
++      if (quotes) {
++        out << '"';
++      }
++      myPrintUC16(Cast<String>(obj), out, 0, max_len);
++      if (quotes) {
++        out << '"';
++      }
++    } else if (IsNumber(obj)) {
++      out << Object::NumberValue(obj);
++    } else if (IsOddball(obj)) {
++      switch (Cast<Oddball>(obj)->kind()) {
++      case Oddball::kFalse:
++        out << "#F";
++        break;
++      case Oddball::kTrue:
++        out << "#T";
++        break;
++      case Oddball::kNull:
++        out << "#N";
++        break;
++      case Oddball::kUndefined:
++        out << "#U";
++        break;
++      default:
++        out << "#?";
++      }
++    } else if (IsJSFunction(obj)) {
++      auto info = Cast<JSFunction>(obj)->shared();
++      if (!info->IsUserJavaScript()) {
++        out << '%';
++      }
++
++      auto name = info->Name();
++      if (name->length()) {
++        myPrintUC16(name, out, 0, max_len);
++      } else {
++        out << "<anonymous>";
++      }
++    } else if (IsJSRegExp(obj)) {
++      out << '/';
++      myPrintUC16(Cast<JSRegExp>(obj)->source(), out, 0, max_len);
++      out << '/';
++    } else if (IsJSReceiver(obj)) {
++      Handle<JSReceiver> rcvr = handle(Cast<JSReceiver>(obj), isolate);
++      DirectHandle<String> ctor = JSReceiver::GetConstructorName(isolate, rcvr);
++      out << '{';
++      out << rcvr->GetOrCreateIdentityHash(isolate).value();
++      if (iter_obj && (strcmp(ctor->ToCString().get(), "Object") == 0 ||
++                       strcmp(ctor->ToCString().get(), "Array") == 0)) {
++        // We are encountering this object for the first time, iterate it!
++        Handle<FixedArray> contents;
++        do {
++          if (!(KeyAccumulator::GetKeys(
++                    isolate, rcvr, KeyCollectionMode::kOwnOnly,
++                    ENUMERABLE_STRINGS, GetKeysConversion::kConvertToString))
++                   .ToHandle(&contents)) {
++            DCHECK((isolate)->has_exception());
++            return;
++          }
++        } while (false);
++
++        for (int i = 0; i < contents->length(); i++) {
++          out << ',';
++          Handle<String> key(Cast<String>(contents->get(i)), isolate);
++          Handle<Object> property;
++          // Add the key to the trace logs
++          myPrintUC16(*key, out, 0, max_len);
++          out << "\\:";
++          do {
++            if (!(Object::VV8GetPropertyOrElementWithNoSideEffects(isolate,
++                                                                   rcvr, key))
++                     .ToHandle(&property)) {
++              DCHECK((isolate)->has_exception());
++              return;
++            }
++          } while (false);
++          // Recurse with the option to not go deeper
++          visv8_to_string(isolate, out, *property, true, -1, false);
++        }
++      } else {
++        // We are inside a nested object, do not go deeper!
++        out << ',';
++        myPrintUC16(*ctor, out, 0, max_len);
++      }
++      out << '}';
++    } else {
++      out << '?';
++    }
++  }
++}
++
++// TLS storage slot key for per-thread output streams for our trace logging
++static pthread_key_t visv8_out_key;
++
++// Type used to aggregate all TLS data into one POD object
++struct VisV8TlsData {
++  // Since looking up window.origin can trigger recursion, we need to know when
++  // to ignore API calls
++  int rcount;
++  // std filestream used to log records to disk for this thread
++  std::ofstream log;
++
++  // Context (last-encountered Isolate, and last SID within that Isolate)
++  Isolate *last_isolate;
++  int last_script_id;
++  bool isolate_changed;
++
++  // Log file name generator pattern (for log rollover on large size)
++  int next_log;
++  char log_name_pattern[256];
++
++  // Small/simple "set" of seen Isolate/SID pairs (to avoid re-dumping script
++  // source/etc. within one log)
++  std::vector<std::pair<Isolate *, int>> seen_sids;
++
++  // To track @origin (SOP), we need to look up the window.origin string; keep a
++  // cached copy (and a scratch buffer)
++  std::ostringstream last_origin_url;
++  std::ostringstream origin_url_scratch;
++
++  // Dumb constructor
++  VisV8TlsData()
++      : rcount(0), last_isolate(nullptr), last_script_id(-1),
++        isolate_changed(true), next_log(0) {
++    // HACK: only direct pthread call can recover thread "name" [can't get
++    // current Thread object from V8?]
++    char thread_name[16] = "<unknown>";
++#if BUILDFLAG(IS_ANDROID)
++    if (prctl(PR_GET_NAME, thread_name, 0, 0, 0)) {
++      perror("prctl");
++    }
++    char log_name[] = "/sdcard/Documents/vv8-%ld-%d-%d-%s.%%d.log";
++#else
++    if (pthread_getname_np(pthread_self(), thread_name, sizeof(thread_name))) {
++      perror("pthread_getname_np");
++    }
++    char log_name[] = "vv8-%ld-%d-%d-%s.%%d.log";
++#endif
++    // Use thread name et al. to construct our log name pattern
++    snprintf(log_name_pattern, sizeof log_name_pattern, log_name,
++             (long)base::OS::TimeCurrentMillis(),
++             base::OS::GetCurrentProcessId(), base::OS::GetCurrentThreadId(),
++             thread_name);
++
++    // And go ahead/open our next log file
++    open_next_log_file();
++
++    last_origin_url << std::ends; // Initialize this to the empty string to
++                                  // avoid sadness later
++  }
++
++  void open_next_log_file() {
++    char log_name[256];
++
++    if (log.is_open())
++      log.close();
++    snprintf(log_name, sizeof log_name, log_name_pattern, next_log++);
++    log.open(log_name);
++
++    if (!log) {
++      perror(log_name);
++      abort();
++    }
++  }
++
++  // Destructor: close and delete file stream object, reset all key fields to
++  // null/invalid state
++  ~VisV8TlsData() {
++    log.close();
++    reset_isolate(nullptr);
++  }
++
++  // Reset all context state for a new/different isolate
++  void reset_isolate(Isolate *isolate) {
++    last_isolate = isolate;
++    last_origin_url.clear();
++    std::ostringstream().swap(last_origin_url);
++    last_script_id = -1;
++    isolate_changed = true;
++  }
++
++  // Log the current "last_isolate"
++  void log_isolate() {
++    log << '~' << (void *)last_isolate << '\n';
++    isolate_changed = false;
++  }
++
++  // Predicate: have we logged a given isolate/SID pair yet?
++  bool check_sid(Isolate *isolate, int sid) {
++    return std::binary_search(std::begin(seen_sids), std::end(seen_sids),
++                              std::make_pair(isolate, sid));
++  }
++
++  // Utility: insert an isolate/SID pair into our primitive set (no checks for
++  // duplicates)
++  void add_sid(Isolate *isolate, int sid) {
++    auto val = std::make_pair(isolate, sid);
++    seen_sids.insert(
++        std::upper_bound(std::begin(seen_sids), std::end(seen_sids), val), val);
++  }
++
++  // Utility: log a '$' record for the given script object
++  void log_script(Isolate *isolate, Tagged<Script> script) {
++    add_sid(isolate, script->id());
++
++    // Check for eval nesting (i.e., a parent script that may need to be dumped
++    // first)
++    if (script->has_eval_from_shared()) {
++      auto sfi = Cast<SharedFunctionInfo>(script->eval_from_shared());
++      if (IsScript(sfi->script())) {
++        auto parent = Cast<Script>(sfi->script());
++
++        // Yes, dump that parent... (if needed)
++        if (!check_sid(isolate, parent->id())) {
++          log_script(isolate, parent);
++        }
++
++        log << '$' << script->id() << ':' << parent->id();
++      } else {
++        // Well, we were eval'd, but we couldn't identify the parent script??
++        log << '$' << script->id() << ":#?";
++      }
++    } else {
++      // No parent, so print the script name
++      log << '$' << script->id() << ':';
++      visv8_to_string(isolate, log, script->name());
++    }
++
++    // Always finish with the source code (unquoted)
++    log << ':';
++    visv8_to_string(isolate, log, script->source(), false);
++    log << '\n';
++  }
++
++private:
++  // Helper to "print" the current origin value to an ostream
++  void print_origin(Isolate *isolate, std::ostream &out) {
++    HandleScope hs(isolate);
++
++    // Try to get the global object and print its "origin" property
++    Handle<JSGlobalObject> native_global =
++        handle(isolate->native_context()->global_object(), isolate);
++    if (native_global->GetEmbedderFieldCount() >= 2) {
++      // Littered with evil hacks to work around WebKit/Blink's brokenness
++      // w.r.t. initializing its Window object
++      if (native_global->GetEmbedderField(1).IsSmi()) {
++        auto location =
++            JSReceiver::GetProperty(isolate, native_global, "location");
++        Handle<Object> location_value;
++        if (location.ToHandle(&location_value)) {
++          Handle<JSReceiver> location_jsrecv =
++              Cast<JSReceiver>(location_value);
++          auto href = JSReceiver::GetProperty(isolate, location_jsrecv, "href");
++          Tagged<Object> security_token =
++              isolate->context()->native_context()->security_token();
++          Handle<Object> origin_value;
++          if (href.ToHandle(&origin_value)) {
++            out << '@';
++            visv8_to_string(isolate, out, *origin_value);
++            out << ":";
++            visv8_to_string(isolate, out, security_token);
++            out << '\n';
++            return; // Early out
++          }
++        }
++      }
++    }
++
++    // Fallback, if anything went wrong
++    out << "@?\n";
++  }
++
++public:
++  // Utility: log the current ".origin" property of the current global object
++  // (if any)
++  void log_origin(Isolate *isolate) {
++    // Clear out the scratch buffer & print the origin string to it
++    origin_url_scratch.seekp(0);
++    origin_url_scratch.clear();
++    std::ostringstream().swap(origin_url_scratch);
++    print_origin(isolate, origin_url_scratch);
++
++    // Now, compare with our cached copy
++    if (strcmp(origin_url_scratch.str().c_str(),
++               last_origin_url.str().c_str()) != 0) {
++      // Change!  Replace our cached copy and log it
++      last_origin_url.seekp(0);
++      last_origin_url.clear();
++      std::ostringstream().swap(last_origin_url);
++      last_origin_url << origin_url_scratch.str();
++      log << last_origin_url.str();
++    }
++  }
++};
++
++// Thread-exit destructor (to close any per-thread logging file opened, etc.)
++static void visv8_thread_exit_flusher(void *arg) {
++  auto data =
++      static_cast<VisV8TlsData *>(arg); // pthread guarantees this is not NULL
++  delete data;
++  pthread_setspecific(visv8_out_key, nullptr);
++}
++
++// Initialization routine for VisV8's TLS slot (must call-once per process,
++// before any visv8 callbacks)
++void visv8_tls_init() {
++  // HACK: only direct pthread calls give us thread destructors [V8's xplatform
++  // thread stuff won't]
++  if (pthread_key_create(&visv8_out_key, visv8_thread_exit_flusher)) {
++    perror("pthread_key_create");
++  }
++}
++
++// Self-contained "clean up the current thread's TLS stuff" function for use by
++// external shutdown logic (e.g., atexit)
++void visv8_tls_fini() {
++  auto data = pthread_getspecific(visv8_out_key);
++  if (data) {
++    visv8_thread_exit_flusher(data);
++  }
++}
++
++// RAII "handle" to VV8 per-thread context; keep strictly lexically scoped!
++// (currently no actual destruction happening)
++class VisV8Context {
++  VisV8TlsData *data;
++
++public:
++  // There is exactly ONE way to properly construct one of these...
++  VisV8Context() = delete;
++  VisV8Context(const VisV8Context &) = delete;
++
++  // ...and THIS is it
++  explicit VisV8Context(Isolate *current_isolate) {
++    // Get the TLS data for this thread
++    data = static_cast<VisV8TlsData *>(pthread_getspecific(visv8_out_key));
++
++    // If it doesn't exist yet, initialize it
++    if (!data) {
++      // This will initialize all our state and open the [first] log file (or
++      // die)
++      data = new VisV8TlsData();
++      DCHECK_NE(data, nullptr);
++
++      if (pthread_setspecific(visv8_out_key, data)) {
++        perror("pthread_setspecific");
++      } else {
++        // Another hack: since pthreads doesn't call thread destructors on the
++        // "main thread" (since it doesn't call pthread_exit), and since calling
++        // pthread_exit inside an atexit() handler is NO BUENO (it can and will
++        // disrupt clean process shutdown), we need to set up a special ad hoc
++        // thread destructor for the "main thread" using atexit EXTRA HACKY:
++        // there is no portable pthreads API for determining "main thread"
++        // status; use this Linux-only hack for now...
++        if (syscall(SYS_gettid) == getpid()) {
++          atexit(visv8_tls_fini);
++        }
++      }
++    }
++
++    // Check for Isolate/scriptID invalidation based on current isolate
++    if (current_isolate != data->last_isolate) {
++      data->reset_isolate(current_isolate);
++    }
++
++    // Bump our recursion count
++    ++data->rcount;
++  }
++
++  // On cleanup of this context, decrement our recursion count
++  ~VisV8Context() { --data->rcount; }
++
++  bool isolate_changed() const { return data->isolate_changed; }
++
++  bool is_recursive() const { return data->rcount > 1; }
++
++  friend class VisV8Logger;
++};
++
++// RAII "handle" to VisV8 context's logging stream (lexically-scoped,
++// short-lived) (right now, trivially simple; if we later add in more
++// complicated [synchronized] log flushing, this will hide all of that nicely)
++class VisV8Logger {
++  VisV8TlsData *data;
++
++public:
++  VisV8Logger() = delete;
++  VisV8Logger(const VisV8Logger &) = delete;
++
++  explicit VisV8Logger(const VisV8Context &context) : data(context.data) {
++    auto current_isolate =
++        data->last_isolate; // Assume no change in isolate from the creation of
++                            // our context handle (lexical lifetimes)
++
++    // If the context has observed an isolate change, log that first...
++    if (context.isolate_changed()) {
++      data->log_isolate();
++    }
++
++    // Then, log the origin (which does its own caching/skipping logic)
++    data->log_origin(current_isolate);
++
++    // Now check script ID: has it changed?
++    DebuggableStackFrameIterator it(current_isolate);
++    if (!it.done() && it.is_javascript()) {
++      auto script = it.javascript_frame()->script();
++
++      if (script->id() != data->last_script_id) {
++        // OK, is this a new script we've never seen before?
++        if (!data->check_sid(current_isolate, script->id())) {
++          // Yes--log that script's source/genealogy
++          data->log_script(current_isolate, script);
++        }
++
++        // Update our last-script-id and log the active script ID
++        data->last_script_id = script->id();
++        out() << '!' << script->id() << '\n';
++      }
++    } else {
++      // Weird--we can't tell! (and this breaks our last script-id)
++      out() << "!?\n";
++      data->last_script_id = -1;
++    }
++  }
++
++  ~VisV8Logger() {
++    // Trap I/O errors as fatal
++    if (!out()) {
++      perror("log output");
++      abort();
++    }
++
++    // Check to see if our log has grown too large; rollover...
++    if (out().tellp() > 1000 * 1000 * 1000) { // Max 1GB per log file
++      out() << std::flush;
++      // Trap I/O errors as fatal
++      if (!out()) {
++        perror("log output");
++        abort();
++      }
++
++      data->open_next_log_file();
++    }
++  }
++
++  // Public access to the logging stream
++  std::ostream &out() const { return data->log; }
++};
++
++// Predicate to see if an object (for property load/store) is worth logging
++static bool visv8_should_log_object(Tagged<Object> obj) {
++  if (IsPrimitive(obj)) {
++    // Never log accesses on primitive values
++    return false;
++  }
++
++  Tagged<HeapObject> hobj = Cast<HeapObject>(obj);
++  auto itype = hobj->map()->instance_type();
++  return ((itype == JS_GLOBAL_OBJECT_TYPE) || (itype == JS_GLOBAL_PROXY_TYPE) ||
++          (itype == JS_SPECIAL_API_OBJECT_TYPE) ||
++          (itype == JS_API_OBJECT_TYPE));
++}
++
++// Helper to log property get (for easy extern access by the Reflect.get
++// builtin)
++void visv8_log_property_get(Isolate *isolate, int call_site, Tagged<Object> obj,
++                            Tagged<Object> prop) {
++  VisV8Context vctx(isolate);
++
++  if (visv8_should_log_object(obj)) {
++    VisV8Logger vlog(vctx);
++    // Peek at the call stack to see our offset within the active script
++    if (call_site < 0) {
++      DebuggableStackFrameIterator it(isolate);
++      if (!it.done()) {
++        call_site = it.frame()->position();
++      }
++    }
++
++    vlog.out() << 'g' << call_site << ':';
++    visv8_to_string(isolate, vlog.out(), obj);
++    vlog.out() << ':';
++    visv8_to_string(isolate, vlog.out(), prop);
++    vlog.out() << '\n';
++  }
++}
++
++// Helper to log property set (for easy extern access by the Reflect.set
++// builtin)
++void visv8_log_property_set(Isolate *isolate, int call_site, Tagged<Object> obj,
++                            Tagged<Object> prop, Tagged<Object> value) {
++  VisV8Context vctx(isolate);
++
++  if (visv8_should_log_object(obj)) {
++    VisV8Logger vlog(vctx);
++    // Peek at the call stack to see our offset within the active script
++    if (call_site < 0) {
++      DebuggableStackFrameIterator it(isolate);
++      if (!it.done()) {
++        call_site = it.frame()->position();
++      }
++    }
++
++    vlog.out() << 's' << call_site << ':';
++    visv8_to_string(isolate, vlog.out(), obj);
++    vlog.out() << ':';
++    visv8_to_string(isolate, vlog.out(), prop);
++    vlog.out() << ':';
++    visv8_to_string(isolate, vlog.out(), value);
++    vlog.out() << '\n';
++  }
++}
++
++// Special hack to allow callbacks from HandleApiCall hooks
++void visv8_log_api_call(Isolate *isolate, bool is_constructor,
++                        Tagged<HeapObject> func, Tagged<Object> receiver,
++                        Address *argv, int argc) {
++  int call_site = -1;
++  VisV8Context vctx(isolate);
++
++  // Do all this logging business ONLY if we are NOT recursive
++  if (!vctx.is_recursive()) {
++    VisV8Logger vlog(vctx);
++
++    // Peek at the call stack to see our offset within the active script
++    DebuggableStackFrameIterator it(isolate);
++    if (!it.done()) {
++      call_site = it.frame()->position();
++    }
++    if (is_constructor) {
++      vlog.out() << 'n' << call_site << ':';
++      visv8_to_string(isolate, vlog.out(), func);
++    } else {
++      vlog.out() << 'c' << call_site << ':';
++      visv8_to_string(isolate, vlog.out(), func);
++      vlog.out() << ':';
++      visv8_to_string(isolate, vlog.out(), receiver);
++    }
++    for (int i = 0; i < argc; ++i) {
++      vlog.out() << ':';
++      visv8_to_string(isolate, vlog.out(), (Tagged<Object>)(argv)[i], true, -1,
++                      true);
++    }
++    vlog.out() << '\n';
++  }
++}
++
++void visv8_log_java_prop_get(Isolate *isolate, int call_site, Tagged<Object> obj, Tagged<Object> prop, Tagged<Object> value) {
++
++  if (visv8_should_log_object(obj)) {
++    VisV8Context vctx(isolate);
++    VisV8Logger vlog(vctx);
++    // Peek at the call stack to see our offset within the active script
++    if (call_site < 0) {
++      DebuggableStackFrameIterator it(isolate);
++      if (!it.done()) {
++        call_site = it.frame()->position();
++      }
++    }
++
++    vlog.out() << 'j' << call_site << ':';
++    vlog.out() << 'g' << ':';
++    visv8_to_string(isolate, vlog.out(), obj);
++    vlog.out() << ':';
++    visv8_to_string(isolate, vlog.out(), prop);
++    vlog.out() << ':';
++    visv8_to_string(isolate, vlog.out(), value);
++    vlog.out() << '\n';
++  }
++}
++
++void visv8_log_java_prop_set(Isolate *isolate, int call_site, Tagged<Object> obj, Tagged<Object> prop, Tagged<Object> value) {
++
++  if (visv8_should_log_object(obj)) {
++    VisV8Context vctx(isolate);
++    VisV8Logger vlog(vctx);
++    // Peek at the call stack to see our offset within the active script
++    if (call_site < 0) {
++      DebuggableStackFrameIterator it(isolate);
++      if (!it.done()) {
++        call_site = it.frame()->position();
++      }
++    }
++
++    vlog.out() << 'j' << call_site << ':';
++    vlog.out() << 's' << ':';
++    visv8_to_string(isolate, vlog.out(), obj);
++    vlog.out() << ':';
++    visv8_to_string(isolate, vlog.out(), prop);
++    vlog.out() << ':';
++    visv8_to_string(isolate, vlog.out(), value);
++    vlog.out() << '\n';
++  }
++}
++
++void visv8_log_java_api_call(Isolate *isolate, bool is_constructor,
++                        Tagged<String> func,
++                        Tagged<Object> receiver,
++                        Tagged<Object> result,
++                        std::vector<Tagged<Object>> *argv, int argc) {
++
++  int call_site = -1;
++  VisV8Context vctx(isolate);
++
++  // Do all this logging business ONLY if we are NOT recursive
++  if (!vctx.is_recursive()) {
++    VisV8Logger vlog(vctx);
++
++    // Peek at the call stack to see our offset within the active script
++    DebuggableStackFrameIterator it(isolate);
++    if (!it.done()) {
++      call_site = it.frame()->position();
++    }
++
++    vlog.out() << 'j' << call_site << ':';
++    if (is_constructor) {
++      vlog.out() << 'n' << ':';
++      visv8_to_string(isolate, vlog.out(), func);
++    } else {
++      vlog.out() << 'c' << ':';
++      vlog.out() << "%<anonymous>";
++      vlog.out() << ':';
++      visv8_to_string(isolate, vlog.out(), receiver);
++      vlog.out() << ':';
++      visv8_to_string(isolate, vlog.out(), result, true, -1, true);
++    }
++    for (int i = 0; i < argc; ++i) {
++      vlog.out() << ':';
++      vlog.out() << (*argv)[i];
++      visv8_to_string(isolate, vlog.out(), (*argv)[i], true, -1,
++                      true);
++    }
++    vlog.out() << '\n';
++  }
++}
++
++}  // namespace v8::internal
+\ No newline at end of file
 diff --git a/src/runtime/runtime-utils.h b/src/runtime/runtime-utils.h
 index 345e326eed8..62cb56eaeca 100644
 --- a/src/runtime/runtime-utils.h
