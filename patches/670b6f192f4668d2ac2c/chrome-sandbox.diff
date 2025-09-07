@@ -1,6 +1,6 @@
-From 6e64ba412ad091aa4e19d2e490a2a2cebbc6c265 Mon Sep 17 00:00:00 2001
+From 3c0317a04d3af09961725ea927c7849863218ef0 Mon Sep 17 00:00:00 2001
 From: Sohom <sdatta4@ncsu.edu>
-Date: Sat, 6 Sep 2025 20:56:34 -0400
+Date: Sun, 7 Sep 2025 10:25:27 -0400
 Subject: [PATCH] Add VisibleV8 support for Chrome 140
 
 ---
@@ -11,8 +11,7 @@ Subject: [PATCH] Add VisibleV8 support for Chrome 140
  content/renderer/renderer_main.cc             |  3 +-
  .../modules/remote_objects/remote_object.cc   |  1 +
  .../renderer/platform/bindings/v8_binding.h   |  1 +
- v8                                            |  2 +-
- 8 files changed, 54 insertions(+), 7 deletions(-)
+ 7 files changed, 53 insertions(+), 6 deletions(-)
 
 diff --git a/base/android/java/src/org/chromium/base/process_launcher/BindService.java b/base/android/java/src/org/chromium/base/process_launcher/BindService.java
 index e9c211fc0e9b7..73b9a3c0341df 100644
@@ -190,13 +189,6 @@ index 4c7d81cd06492..bd023d9841c10 100644
  #include "v8/include/v8-value.h"
  
  namespace blink {
-diff --git a/v8 b/v8
-index fdb12b460f148..30ad1e968d3db 160000
---- a/v8
-+++ b/v8
-@@ -1 +1 @@
--Subproject commit fdb12b460f148895f6af2ff0e0d870ff8889f154
-+Subproject commit 30ad1e968d3dbbb11b120396f14f6b94fb689056
 -- 
 2.43.0
 
