@@ -1,2 +1,0 @@
-FROM ubuntu:latest
-COPY ./artifacts /artifacts
