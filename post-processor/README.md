@@ -1,7 +1,5 @@
 # VV8 Post Processor
 
-> **Note** This is fork of the post-processor repo located at the [visiblev8](https://github.com/wspr-ncsu/visiblev8)
-
 Swiss-Army dumping ground of logic related to VisibleV8 (VV8) trace log processing.
 Originally tightly integrated to a single workflow (i.e., many assumptions/dependencies w.r.t. databases and filenames); slowly being transmogrified into a standalone, modular toolkit.
 
