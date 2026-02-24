@@ -101,7 +101,7 @@ git config --global --add safe.directory '*'
 export GIT_CACHE_PATH="/build/.git_cache"
 
 ### checkout the stable chrome version and its dependencies
-[ ! -d $WD/src ] && git clone --depth 4 --branch $VERSION https://github.com/chromium/chromium.git $WD/src
+[ ! -d $WD/src ] && git clone --depth 4 --branch $VERSION https://chromium.googlesource.com/chromium/src $WD/src
 [ ! -d depot_tools ] && git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
 export PATH="$PATH:${DP}"
 cd $WD/
