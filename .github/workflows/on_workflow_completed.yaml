@@ -9,7 +9,7 @@ jobs:
     runs-on: [self-hosted, linux, workflow-finish-runner]
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Wait for results
         run: sleep 10
       - name: Extract short SHA
