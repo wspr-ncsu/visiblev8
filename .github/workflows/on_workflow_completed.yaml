@@ -15,7 +15,7 @@ jobs:
       - name: Extract short SHA
         id: short_sha
         run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-      - uses: actions/github-script@v7
+      - uses: actions/github-script@v8
         id: get_release
         with:
           script: |

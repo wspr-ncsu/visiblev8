@@ -18,7 +18,7 @@ jobs:
         - name: Extract short SHA
           id: short_sha
           run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-        - uses: actions/github-script@v7
+        - uses: actions/github-script@v8
           id: get_release
           with:
             script: |
@@ -46,7 +46,7 @@ jobs:
               core.setOutput('chromeMajorVersion', chromeMajorVersion);
         - name: Diff our changes
           id: diff
-          uses: actions/github-script@v7
+          uses: actions/github-script@v8
           env:
             oldCommit: ${{ steps.get_release.outputs.commit }}
             currentCommit: ${{ steps.get_release.outputs.currentGitCommit }}
@@ -65,7 +65,7 @@ jobs:
   # Hack: We send the first letter or the string 'empty' since Github runners hang if we send over the entire diff
         - name: Should we publish ?
           id: shouldPublish
-          uses: actions/github-script@v7
+          uses: actions/github-script@v8
           env:
             GIT_DIFF: ${{ steps.diff.outputs.diff }}
           with:
@@ -135,7 +135,7 @@ jobs:
         - name: Create a release
           if: steps.shouldPublish.outputs.shouldPublish == 'true'
           id: create_release
-          uses: actions/github-script@v7
+          uses: actions/github-script@v8
           with:
             script: |
               const name = 'visiblev8_${{ steps.get_release.outputs.currentGitCommit }}-${{ steps.get_release.outputs.chromeReleaseVersion }}';
