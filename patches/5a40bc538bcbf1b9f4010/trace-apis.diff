@@ -1,9 +1,10 @@
-From b7de679c911d7e1957035fd2ddd8bcb6d33c2a7b Mon Sep 17 00:00:00 2001
+From 7d50d50998c34b7d97c153ecf97e31cf3ba4e847 Mon Sep 17 00:00:00 2001
 From: Ale0x78 <anahape@ncsu.edu>
 Date: Tue, 21 Apr 2026 01:16:35 +0000
 Subject: [PATCH] Add support for Chrome 147
 
 ---
+ BUILD.bazel                           |   1 +
  BUILD.gn                              |  13 +-
  include/v8-visiblev8.h                |  31 ++
  src/api/api.cc                        |  68 +++
@@ -23,10 +24,25 @@ Subject: [PATCH] Add support for Chrome 147
  src/runtime/runtime-compiler.cc       |  11 +
  src/runtime/runtime-test.cc           | 102 ++++
  src/runtime/runtime-utils.cc          | 704 ++++++++++++++++++++++++++
- 19 files changed, 1225 insertions(+), 217 deletions(-)
+ src/runtime/runtime.h                 |  23 +
+ v8-visiblev8.h                        |  31 ++
+ 22 files changed, 1280 insertions(+), 217 deletions(-)
  create mode 100644 include/v8-visiblev8.h
  create mode 100644 src/runtime/runtime-utils.cc
+ create mode 100644 v8-visiblev8.h
 
+diff --git a/BUILD.bazel b/BUILD.bazel
+index 421ebcdd2ee..e808bb32454 100644
+--- a/BUILD.bazel
++++ b/BUILD.bazel
+@@ -2523,6 +2523,7 @@ filegroup(
+         "src/runtime/runtime-test.cc",
+         "src/runtime/runtime-trace.cc",
+         "src/runtime/runtime-typedarray.cc",
++        "src/runtime/runtime-utils.cc",
+         "src/runtime/runtime-utils.h",
+         "src/runtime/runtime-weak-refs.cc",
+         "src/sandbox/bounded-size.h",
 diff --git a/BUILD.gn b/BUILD.gn
 index a5c7d847781..ebc23d541b5 100644
 --- a/BUILD.gn
@@ -1804,5 +1820,92 @@ index 00000000000..aac5ab3f6e2
 +
 +}  // namespace v8::internal
 \ No newline at end of file
+diff --git a/src/runtime/runtime.h b/src/runtime/runtime.h
+index f70caed351d..6a4f385d54e 100644
+--- a/src/runtime/runtime.h
++++ b/src/runtime/runtime.h
+@@ -573,6 +573,8 @@ constexpr bool CanTriggerGC(T... properties) {
+   F(DebugPrintFloat, 5, 1)                                               \
+   F(DebugPrintPtr, 1, 1)                                                 \
+   F(DebugPrintWord, 5, 1)                                                \
++  F(VV8TraceFunctionCall, -1, 1)                                         \
++  F(VV8TraceKeyedHasIC, -1, 1)                                           \
+   F(DebugTrace, 0, 1)                                                    \
+   F(DebugTraceMinimal, 0, 1)                                             \
+   F(DeoptimizeFunction, 1, 1)                                            \
+@@ -681,6 +683,9 @@ constexpr bool CanTriggerGC(T... properties) {
+   F(TakeHeapSnapshot, -1, 1)                                             \
+   F(TraceEnter, 0, 1)                                                    \
+   F(TraceExit, 1, 1)                                                     \
++  F(TraceFunctionCall, 0, 1)                                             \
++  F(TracePropertyLoad, 3, 1)                                             \
++  F(TracePropertyStore, 4, 1)                                            \
+   F(TurbofanStaticAssert, 1, 1)                                          \
+   F(TypedArraySpeciesProtector, 0, 1)                                    \
+   F(WaitForBackgroundOptimization, 0, 1)                                 \
+@@ -1156,6 +1161,24 @@ enum class DebugPrintValueType : uint16_t {
+   kTagged,
+ };
+ 
++V8_EXPORT extern void ext_visv8_log_java_api_call(
++    Isolate* isolate, bool is_constructor, Tagged<String> local_func,
++    Tagged<Object> local_receiver, Tagged<Object> local_result,
++    std::vector<v8::internal::Tagged<v8::internal::Object>>* argv, int argc);
++
++V8_EXPORT extern void ext_visv8_log_java_prop_set(Isolate* isolate,
++                                                  int call_site,
++                                                  Tagged<Object> local_obj,
++                                                  Tagged<Object> local_prop,
++                                                  Tagged<Object> local_value);
++
++V8_EXPORT extern void ext_visv8_log_java_prop_get(Isolate* isolate,
++                                                  int call_site,
++                                                  Tagged<Object> local_obj,
++                                                  Tagged<Object> local_prop,
++                                                  Tagged<Object> local_value);
++
++
+ void PrintIndentation(int stack_size);
+ 
+ }  // namespace internal
+diff --git a/v8-visiblev8.h b/v8-visiblev8.h
+new file mode 100644
+index 00000000000..fcc06c8fc91
+--- /dev/null
++++ b/v8-visiblev8.h
+@@ -0,0 +1,31 @@
++#ifndef INCLUDE_V8_VISIBLEV8_H_
++#define INCLUDE_V8_VISIBLEV8_H_
++
++#include <vector>
++
++#include "v8-isolate.h"
++#include "v8-local-handle.h"
++#include "v8-value.h"
++
++
++namespace v8 {
++    void visv8_log_java_api_call(Isolate *isolate, bool is_constructor,
++                        v8::Local<String> local_func,
++                        v8::Local<Object> local_receiver,
++                        v8::Local<Value> local_result,
++                        const std::vector<v8::Local<v8::Value>>& argv, int argc);
++
++    void visv8_log_java_prop_set(Isolate *isolate, int call_site,
++                        v8::Local<v8::Object> local_obj, 
++                        v8::Local<v8::Object> local_prop, 
++                        v8::Local<v8::Object> local_value);
++
++    void visv8_log_java_prop_get(Isolate *isolate, int call_site,
++                        v8::Local<v8::Object> local_obj,
++                        v8::Local<v8::Object> local_prop,
++                        v8::Local<v8::Object> local_value);
++
++}
++
++
++#endif  // INCLUDE_V8_VISIBLEV8_H_
+\ No newline at end of file
 -- 
 2.53.0
+
