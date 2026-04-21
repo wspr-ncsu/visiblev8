@@ -1,2 +1,0 @@
-Chrome 146.0.7680.111
-Commit bc343986bd4cb17e49ef15b70c4bdac710e27167 
