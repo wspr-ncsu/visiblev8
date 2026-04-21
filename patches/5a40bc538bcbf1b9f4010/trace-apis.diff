@@ -1,4 +1,4 @@
-From 90493b5fde4c071dceaa6e1fdc04f918513a05e1 Mon Sep 17 00:00:00 2001
+From b3efdde582e0697072e4b19ebbe9bd8efb1c00f9 Mon Sep 17 00:00:00 2001
 From: Ale0x78 <anahape@ncsu.edu>
 Date: Mon, 20 Apr 2026 23:39:41 -0400
 Subject: [PATCH] Add support for Chrome 147
@@ -1113,7 +1113,7 @@ index ec07e944a81..444183b0f88 100644
    CHECK_UNLESS_FUZZING(args.length() == 2);
 diff --git a/src/runtime/runtime-utils.cc b/src/runtime/runtime-utils.cc
 new file mode 100644
-index 00000000000..aac5ab3f6e2
+index 00000000000..5bc8e67f309
 --- /dev/null
 +++ b/src/runtime/runtime-utils.cc
 @@ -0,0 +1,704 @@
@@ -1245,7 +1245,7 @@ index 00000000000..aac5ab3f6e2
 +          }
 +        } while (false);
 +
-+        for (int i = 0; i < contents->length(); i++) {
++        for (unsigned int i = 0; i < (contents->length()).value(); i++) {
 +          out << ',';
 +          Handle<String> key(Cast<String>(contents->get(i)), isolate);
 +          Handle<Object> property;
@@ -1821,7 +1821,6 @@ index 00000000000..aac5ab3f6e2
 +}
 +
 +}  // namespace v8::internal
-\ No newline at end of file
 diff --git a/src/runtime/runtime-utils.h b/src/runtime/runtime-utils.h
 index 345e326eed8..996a810238b 100644
 --- a/src/runtime/runtime-utils.h
@@ -2023,4 +2022,3 @@ index f70caed351d..71149d7b2d9 100644
  
 -- 
 2.53.0
-
