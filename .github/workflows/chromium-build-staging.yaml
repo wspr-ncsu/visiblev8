@@ -95,13 +95,13 @@ jobs:
         uses: actions/github-script@v8
         with:
           script: |
-            const name = 'visiblev8_${{ steps.get_release.outputs.currentGitCommit }}-${{ steps.get_release.outputs.chromeReleaseVersion }}';
+            const name = 'visiblev8_${{ steps.get_release.outputs.currentGitCommit }}-${{ steps.get_release.outputs.chromeReleaseVersion }}-staging';
             const release = await github.rest.repos.createRelease({
               owner: 'wspr-ncsu',
               repo: 'visiblev8',
               tag_name: name,
               name: name,
-              body: 'This is the release for VisibleV8 commit ${{ steps.get_release.outputs.currentGitCommit }} based on Chromium ${{ steps.get_release.outputs.chromeReleaseVersion }} (major version ${{ steps.get_release.outputs.chromeMajorVersion }}).',
+              body: 'This is a staging release for VisibleV8 commit ${{ steps.get_release.outputs.currentGitCommit }} based on Chromium ${{ steps.get_release.outputs.chromeReleaseVersion }} (major version ${{ steps.get_release.outputs.chromeMajorVersion }}).',
               draft: false,
               prerelease: true
             });
