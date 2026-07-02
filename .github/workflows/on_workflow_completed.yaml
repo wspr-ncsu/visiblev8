@@ -1,7 +1,7 @@
 name: Workflow success reporter
 on:
   workflow_run:
-    workflows: ["Build VisibleV8"]
+    workflows: ["Build VisibleV8", "Build VisibleV8 (Staging)"]
     types: [completed]
 permissions: read-all
 jobs:

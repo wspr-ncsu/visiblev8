@@ -1,10 +1,8 @@
-name: Build VisibleV8
+name: Build VisibleV8 (Staging)
 on:
   push:
     branches:
-      - "master"
-  schedule:
-    - cron: "0 0 * * *"
+      - "staging"
   workflow_dispatch:
 jobs:
   build_vv8:
@@ -79,47 +77,6 @@ jobs:
           VERSION: ${{ steps.get_release.outputs.chromeReleaseVersion }}
         run: |
           cd builder && make build VERSION=$VERSION DEFAULT=1 DEBUG=0 PUBLISH_ASSETS=0 TESTS=1 ANDROID=1 ARM=1 WEBVIEW=1 IDLDATA=1
-      - name: Get VV8 artifact name
-        if: steps.shouldPublish.outputs.shouldPublish == 'true'
-        id: artifact_name
-        run: |
-          PACKAGE_NAME_AMD64=`find ./builder/artifacts -name '*amd64.deb' -printf "%f\n" | sort -V | tail -n 1`
-          PACKAGE_NAME_ARM64=`find ./builder/artifacts -name '*arm64.deb' -printf "%f\n" | sort -V | tail -n 1`
-          echo "artifact_name_amd64=$PACKAGE_NAME_AMD64" >> $GITHUB_OUTPUT
-          echo "artifact_name_arm64=$PACKAGE_NAME_ARM64" >> $GITHUB_OUTPUT
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: visiblev8
-          password: ${{ secrets.DOCKERHUB_PASSWORD }}
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        if: steps.shouldPublish.outputs.shouldPublish == 'true'
-        uses: docker/metadata-action@v5
-        with:
-          images: visiblev8/vv8-base
-          tags: |
-            type=raw,value=latest,enable=true
-            type=raw,value=${{ steps.short_sha.outputs.sha_short }}_${{ steps.get_release.outputs.chromeReleaseVersion }},enable=true
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        if: steps.shouldPublish.outputs.shouldPublish == 'true'
-        with:
-          context: ./builder/
-          build-args: |
-            VERSION=${{ steps.get_release.outputs.chromeReleaseVersion }}
-            ARTIFACT_DIR=./artifacts
-            PACKAGE_NAME_AMD64=${{ steps.artifact_name.outputs.artifact_name_amd64 }}
-            PACKAGE_NAME_ARM64=${{ steps.artifact_name.outputs.artifact_name_arm64 }}
-          platforms: linux/amd64,linux/arm64
-          file: ./builder/vv82dockerhub.dockerfile
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
       - name: Prepare artifacts for upload
         if: steps.shouldPublish.outputs.shouldPublish == 'true'
         id: artifact
@@ -146,7 +103,7 @@ jobs:
               name: name,
               body: 'This is the release for VisibleV8 commit ${{ steps.get_release.outputs.currentGitCommit }} based on Chromium ${{ steps.get_release.outputs.chromeReleaseVersion }} (major version ${{ steps.get_release.outputs.chromeMajorVersion }}).',
               draft: false,
-              prerelease: false
+              prerelease: true
             });
             console.log(release);
             core.setOutput('releaseUploadURL', release.data.upload_url);
@@ -162,11 +119,7 @@ jobs:
       - name: Notify slack that the build succeeded
         if: steps.shouldPublish.outputs.shouldPublish == 'true' && success()
         run: |
-          curl -X POST -H 'Content-type: application/json' --data '{"text":"VisibleV8 build '${{ steps.get_release.outputs.currentGitCommit }}' for Chromium version '${{ steps.get_release.outputs.chromeReleaseVersion }}' has been successful!"}' ${{ secrets.SLACK_WEBHOOK  }}
-      - name: Cleaning up docker environment
-        if: steps.shouldPublish.outputs.shouldPublish == 'true' && ( success() || failure() )
-        run: |
-          docker system prune -f
+          curl -X POST -H 'Content-type: application/json' --data '{"text":"VisibleV8 staging build '${{ steps.get_release.outputs.currentGitCommit }}' for Chromium version '${{ steps.get_release.outputs.chromeReleaseVersion }}' has been successful!"}' ${{ secrets.SLACK_WEBHOOK  }}
       - name: Cleaning built data
         if: steps.shouldPublish.outputs.shouldPublish == 'true' && ( success() || failure() )
         run: |
