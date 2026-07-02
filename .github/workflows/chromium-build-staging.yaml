@@ -73,12 +73,54 @@ jobs:
             core.setOutput('shouldPublish', shouldPublish);
       - name: Build VisibleV8
         if: steps.shouldPublish.outputs.shouldPublish == 'true'
+        id: build
+        continue-on-error: true
         env:
           VERSION: ${{ steps.get_release.outputs.chromeReleaseVersion }}
         run: |
           cd builder && make build VERSION=$VERSION DEFAULT=1 DEBUG=0 PUBLISH_ASSETS=0 TESTS=1 ANDROID=1 ARM=1 WEBVIEW=1 IDLDATA=1
+      - name: Extract patch rejects
+        id: extract_rejects
+        if: steps.build.outcome == 'failure'
+        env:
+          VERSION: ${{ steps.get_release.outputs.chromeReleaseVersion }}
+        run: |
+          cd builder
+          CONTAINER_ID=$(docker ps -aq -l)
+          docker commit "$CONTAINER_ID" patch-fail
+          mkdir -p rejects
+          for f in $(docker run --rm patch-fail find "/tmp/$VERSION" -name '*.rej'); do
+            docker run --rm patch-fail cat "$f" > "rejects/$(basename "$f")"
+          done
+          docker rmi patch-fail
+      - name: Create issue for failed build
+        if: steps.build.outcome == 'failure'
+        uses: actions/github-script@v8
+        env:
+          VERSION: ${{ steps.get_release.outputs.chromeReleaseVersion }}
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const dir = 'builder/rejects';
+            let body = '';
+            if (fs.existsSync(dir)) {
+              for (const file of fs.readdirSync(dir)) {
+                const content = fs.readFileSync(path.join(dir, file), 'utf8');
+                body += `**${file}**\n\`\`\`\n${content}\n\`\`\`\n\n`;
+              }
+            }
+            await github.rest.issues.create({ // Sorry Greg :)
+              owner: 'wspr-ncsu',
+              repo: 'visiblev8',
+              title: `Staging build failed for ${process.env.VERSION}`,
+              body: body || 'Build failed but no .rej files were found.'
+            });
+      - name: Fail job if build failed
+        if: steps.build.outcome == 'failure'
+        run: exit 1
       - name: Prepare artifacts for upload
-        if: steps.shouldPublish.outputs.shouldPublish == 'true'
+        if: steps.shouldPublish.outputs.shouldPublish == 'true' && steps.build.outcome == 'success'
         id: artifact
         env:
           VERSION: ${{ steps.get_release.outputs.chromeReleaseVersion }}
@@ -90,7 +132,7 @@ jobs:
           echo "artifact_file=$ARTIFACT_FILE" >> $GITHUB_OUTPUT
           echo "artifact_name=$ARTIFACT_NAME" >> $GITHUB_OUTPUT
       - name: Create a release
-        if: steps.shouldPublish.outputs.shouldPublish == 'true'
+        if: steps.shouldPublish.outputs.shouldPublish == 'true' && steps.build.outcome == 'success'
         id: create_release
         uses: actions/github-script@v8
         with:
@@ -109,7 +151,7 @@ jobs:
             core.setOutput('releaseUploadURL', release.data.upload_url);
             core.setOutput('release_id', release.data.id);
       - name: Upload artifacts
-        if: steps.shouldPublish.outputs.shouldPublish == 'true'
+        if: steps.shouldPublish.outputs.shouldPublish == 'true' && steps.build.outcome == 'success'
         run: |
           curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -H "Content-Type: application/gzip" \
@@ -117,7 +159,7 @@ jobs:
             "${{ steps.create_release.outputs.releaseUploadURL }}=${{ steps.artifact.outputs.artifact_name }}&label=${{ steps.artifact.outputs.artifact_name }}"
           rm -rf ./builder/artifacts/${{ steps.artifact.outputs.artifact_name }}
       - name: Notify slack that the build succeeded
-        if: steps.shouldPublish.outputs.shouldPublish == 'true' && success()
+        if: steps.shouldPublish.outputs.shouldPublish == 'true' && steps.build.outcome == 'success'
         run: |
           curl -X POST -H 'Content-type: application/json' --data '{"text":"VisibleV8 staging build '${{ steps.get_release.outputs.currentGitCommit }}' for Chromium version '${{ steps.get_release.outputs.chromeReleaseVersion }}' has been successful!"}' ${{ secrets.SLACK_WEBHOOK  }}
       - name: Cleaning built data
