@@ -89,8 +89,8 @@ jobs:
           CONTAINER_ID=$(docker ps -aq -l)
           docker commit "$CONTAINER_ID" patch-fail
           mkdir -p rejects
-          for f in $(docker run --rm patch-fail find "/tmp/$VERSION" -name '*.rej'); do
-            docker run --rm patch-fail cat "$f" > "rejects/$(basename "$f")"
+          for f in $(docker run --rm --entrypoint find patch-fail "/tmp/$VERSION" -name '*.rej'); do
+            docker run --rm --entrypoint cat patch-fail "$f" > "rejects/$(basename "$f")"
           done
           docker rmi patch-fail
       - name: Create issue for failed build
