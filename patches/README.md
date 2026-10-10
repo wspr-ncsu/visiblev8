@@ -16,3 +16,5 @@ The `snap.sh` Bourne shell script automates the process of taking a per-version 
 
 Requirements: Bourne-like shell, standard POSIX CLI utilities, `wget`, `jq`
 
+For a complete step-by-step walk-through on porting patches to new Chromium/V8 versions and resolving conflicts across major releases, see the [VisibleV8 Patching Guide](../PATCHING.md).
+

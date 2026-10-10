@@ -1,0 +1,5 @@
+*.sh text eol=lf
+*.js text eol=lf
+*.py text eol=lf
+*.diff text eol=lf
+*.log text eol=lf

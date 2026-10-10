@@ -2,7 +2,9 @@
 
 PACKAGE_NAME=`find /artifacts -name "vv8-shell*" -printf "%f\n"  | sort -V | tail -n 1`
 VERSION=`echo $PACKAGE_NAME | grep -o -E '[0-9]*\.[0-9]*\.[0-9]*\.[0-9]*'`
-V8_SHELL="/artifacts/$VERSION/vv8-shell-$VERSION"
+V8_SHELL=`find /artifacts/$VERSION -name "vv8-shell*" 2>/dev/null | head -n 1`
+[ -z "$V8_SHELL" ] && V8_SHELL="/artifacts/$VERSION/vv8-shell-$VERSION"
+chmod +x "$V8_SHELL" 2>/dev/null || true
 UNITTESTS="/artifacts/$VERSION/unittests"
 
 WORKSPACE="/work"
@@ -42,7 +44,8 @@ if [ -x "$V8_SHELL" ]; then
         sbase=${sbase%.js}
 
         echo -n "  $script: "
-        "$V8_SHELL" "$script" >/dev/null
+        rm -f vv8-*.log
+        "$V8_SHELL" --no-maglev --no-turbofan "$script" >/dev/null
 
         expected="$EXPECTED_LOGS/$sbase.log"
         actual="$SCRATCH_DIR/$sbase.actual.log"

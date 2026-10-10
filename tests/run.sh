@@ -29,7 +29,12 @@ if [ ! -d "$SUITE_DIR" ]; then
     exit 1
 fi
 
-docker run $PRIV --rm \
+PLATFORM_FLAG=""
+if [ "$(uname -m)" != "x86_64" ]; then
+    PLATFORM_FLAG="--platform linux/amd64"
+fi
+
+docker run $PLATFORM_FLAG $PRIV --rm \
     -v "$ARTIFACTS_DIR:/artifacts:rw" \
     -v "$SRC_DIR:/testsrc:ro" \
     -v "$TOOLS_DIR:/tools:ro" \

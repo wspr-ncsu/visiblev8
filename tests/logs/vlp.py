@@ -65,7 +65,7 @@ def test_parse_raw_fields():
         ("no colons at all", ["no colons at all"]),
         ("no slashes : but colons", ["no slashes ", " but colons"]),
         (r"just \\ slashes\\\\ ", [r"just \ slashes\\ "]),
-        ("escaped\:colons\:galore", ["escaped:colons:galore"]),
+        (r"escaped\:colons\:galore", ["escaped:colons:galore"]),
         (
             r'cprint:#U:"this is a string with \:colons\: and \\backslashes\\ in it"',
             [

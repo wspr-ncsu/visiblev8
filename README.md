@@ -81,6 +81,7 @@ To build VisibleV8 WebViews for architectures, head over to `build/build-direct.
 * Make sure you have [Docker](https://docs.docker.com/install/) and [Python 3](https://www.python.org/downloads/) and a lot of free disk space (e.g., 50GiB) for downloading and building Chromium
 * Clone this repository *(we will call the cloned working directory **$VV8**)*
 * Run `make build` from *inside* `$VV8/builder`, this will build the latest Chromium version with the VisibleV8 patches. You can also run `make build VERSION=104.0.5112.79` to build a specific version of Chromium, but keep in mind that we do not have patchsets for all versions of Chromium.
+* To add support for a new version of Chromium or port patches across releases, consult the [Patching Walk-Through Guide](PATCHING.md).
 * You can find the `.deb` file inside `$VV8/builder/artifacts` and install it using `dpkg -i <path-to-deb-file>`
 * (Optional) If you want to verify that VisibleV8 is producing logs as intended, you can run a set of regression tests using `../tests/run.sh -x $(docker ps -l --format={{.Image}}) trace-apis-obj`. The output will verify the output of the v8-shell against a set of pre-generated logs looking for differences between the logs.
 
