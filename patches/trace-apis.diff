@@ -1,8 +1,8 @@
 diff --git a/BUILD.bazel b/BUILD.bazel
-index 2350f14..9388ed7 100644
+index 914fe144311..344d9e53c41 100644
 --- a/BUILD.bazel
 +++ b/BUILD.bazel
-@@ -2594,6 +2594,7 @@ filegroup(
+@@ -2598,6 +2598,7 @@ filegroup(
          "src/runtime/runtime-test.cc",
          "src/runtime/runtime-trace.cc",
          "src/runtime/runtime-typedarray.cc",
@@ -11,7 +11,7 @@ index 2350f14..9388ed7 100644
          "src/runtime/runtime-weak-refs.cc",
          "src/sandbox/bounded-size.h",
 diff --git a/BUILD.gn b/BUILD.gn
-index c613280..c38a1bc 100644
+index 1df3d4e31bc..6cc974f6e98 100644
 --- a/BUILD.gn
 +++ b/BUILD.gn
 @@ -340,8 +340,8 @@ declare_args() {
@@ -35,7 +35,7 @@ index c613280..c38a1bc 100644
    # Enable Sparkplug
    # Sets -DV8_ENABLE_SPARKPLUG.
    v8_enable_sparkplug = ""
-@@ -1297,6 +1300,11 @@ config("cppgc_header_features") {
+@@ -1301,6 +1304,11 @@ config("cppgc_header_features") {
    } else {
      defines = enabled_external_cppgc_defines
    }
@@ -47,7 +47,7 @@ index c613280..c38a1bc 100644
  }
  
  enabled_external_defines =
-@@ -6590,6 +6598,7 @@ v8_cluster_source_set("v8_base_without_compiler") {
+@@ -6644,6 +6652,7 @@ v8_cluster_source_set("v8_base_without_compiler") {
      "src/runtime/runtime-symbol.cc",
      "src/runtime/runtime-test.cc",
      "src/runtime/runtime-trace.cc",
@@ -57,7 +57,7 @@ index c613280..c38a1bc 100644
      "src/runtime/runtime.cc",
 diff --git a/include/v8-visiblev8.h b/include/v8-visiblev8.h
 new file mode 100644
-index 0000000..a8e8e21
+index 00000000000..a8e8e217712
 --- /dev/null
 +++ b/include/v8-visiblev8.h
 @@ -0,0 +1,31 @@
@@ -94,10 +94,10 @@ index 0000000..a8e8e21
 +#endif  // INCLUDE_V8_VISIBLEV8_H_
 \ No newline at end of file
 diff --git a/src/api/api.cc b/src/api/api.cc
-index adee196..e05cffc 100644
+index 568671193c5..b3db45f068b 100644
 --- a/src/api/api.cc
 +++ b/src/api/api.cc
-@@ -12702,6 +12702,75 @@ std::string SourceLocation::ToString() const {
+@@ -12736,6 +12736,75 @@ std::string SourceLocation::ToString() const {
        .str();
  }
  
@@ -174,7 +174,7 @@ index adee196..e05cffc 100644
  
  #ifdef ENABLE_SLOW_DCHECKS
 diff --git a/src/builtins/builtins-api.cc b/src/builtins/builtins-api.cc
-index ff7ef69..3521e29 100644
+index 24c7180fc3b..a6d491842f0 100644
 --- a/src/builtins/builtins-api.cc
 +++ b/src/builtins/builtins-api.cc
 @@ -17,6 +17,10 @@
@@ -203,7 +203,7 @@ index ff7ef69..3521e29 100644
    // arguments on this path by porting this builtin to assembly and letting
    // it create the required frame structure.
 diff --git a/src/builtins/builtins-call-gen.cc b/src/builtins/builtins-call-gen.cc
-index d6e22ea..89ba013 100644
+index d6e22ea95d0..89ba0130f3a 100644
 --- a/src/builtins/builtins-call-gen.cc
 +++ b/src/builtins/builtins-call-gen.cc
 @@ -932,6 +932,19 @@ TF_BUILTIN(HandleApiCallOrConstruct, CallOrConstructBuiltinsAssembler) {
@@ -237,10 +237,10 @@ index d6e22ea..89ba013 100644
      // current context at this point. For example, if target function was
      // called via Function.prototype.call or other similar builtins, or if it
 diff --git a/src/builtins/builtins-function.cc b/src/builtins/builtins-function.cc
-index b511c42..7521c7e 100644
+index f7ca5412601..bfb49537594 100644
 --- a/src/builtins/builtins-function.cc
 +++ b/src/builtins/builtins-function.cc
-@@ -16,6 +16,11 @@
+@@ -18,6 +18,11 @@
  
  namespace v8 {
  namespace internal {
@@ -252,7 +252,7 @@ index b511c42..7521c7e 100644
  
  namespace {
  
-@@ -27,6 +32,13 @@ MaybeDirectHandle<Object> CreateDynamicFunction(Isolate* isolate,
+@@ -60,6 +65,13 @@ MaybeDirectHandle<Object> CreateDynamicFunction(Isolate* isolate,
    DCHECK_LE(1, args.length());
    int const argc = args.length() - 1;
  
@@ -267,7 +267,7 @@ index b511c42..7521c7e 100644
    DirectHandle<JSObject> target_global_proxy(target->global_proxy(), isolate);
  
 diff --git a/src/builtins/builtins-global.cc b/src/builtins/builtins-global.cc
-index 89be05c..f856a08 100644
+index 89be05c0b3e..f856a0809e1 100644
 --- a/src/builtins/builtins-global.cc
 +++ b/src/builtins/builtins-global.cc
 @@ -12,6 +12,11 @@
@@ -295,7 +295,7 @@ index 89be05c..f856a08 100644
      isolate->CountUsage(v8::Isolate::kFunctionConstructorReturnedUndefined);
      return ReadOnlyRoots(isolate).undefined_value();
 diff --git a/src/builtins/builtins-reflect.cc b/src/builtins/builtins-reflect.cc
-index 4281d4e..bf22701 100644
+index 4281d4e3957..bf227014c89 100644
 --- a/src/builtins/builtins-reflect.cc
 +++ b/src/builtins/builtins-reflect.cc
 @@ -90,6 +90,13 @@ BUILTIN(ReflectSet) {
@@ -313,7 +313,7 @@ index 4281d4e..bf22701 100644
    LookupIterator it(isolate, receiver, lookup_key, target_recv);
    Maybe<bool> result = Object::SetSuperProperty(
 diff --git a/src/builtins/reflect.tq b/src/builtins/reflect.tq
-index 0a39c9f..7fe16b5 100644
+index 0a39c9f4e41..7fe16b5748c 100644
 --- a/src/builtins/reflect.tq
 +++ b/src/builtins/reflect.tq
 @@ -61,6 +61,9 @@ extern transitioning builtin GetPropertyWithReceiver(
@@ -337,7 +337,7 @@ index 0a39c9f..7fe16b5 100644
        objectJSReceiver, name, receiver, SmiConstant(kReturnUndefined));
  }
 diff --git a/src/compiler/js-call-reducer.cc b/src/compiler/js-call-reducer.cc
-index 0b4cc92..c7ef59e 100644
+index ef2524264c2..1fca84e0f97 100644
 --- a/src/compiler/js-call-reducer.cc
 +++ b/src/compiler/js-call-reducer.cc
 @@ -4433,221 +4433,8 @@ Reduction JSCallReducer::ReduceCallWasmFunction(
@@ -565,10 +565,10 @@ index 0b4cc92..c7ef59e 100644
  
  namespace {
 diff --git a/src/ic/accessor-assembler.cc b/src/ic/accessor-assembler.cc
-index cdb0c15..1ba7606 100644
+index c262e24e75f..2b1d1a5de15 100644
 --- a/src/ic/accessor-assembler.cc
 +++ b/src/ic/accessor-assembler.cc
-@@ -6044,6 +6044,8 @@ void AccessorAssembler::GenerateKeyedHasIC() {
+@@ -5964,6 +5964,8 @@ void AccessorAssembler::GenerateKeyedHasIC() {
    auto vector = Parameter<HeapObject>(Descriptor::kVector);
    auto context = Parameter<Context>(Descriptor::kContext);
  
@@ -578,7 +578,7 @@ index cdb0c15..1ba7606 100644
        MakeLoadICParameters(context, receiver, name, slot, vector);
    KeyedLoadIC(&p, LoadAccessMode::kHas);
 diff --git a/src/init/v8.cc b/src/init/v8.cc
-index 91463a1..c5b9b2f 100644
+index 91463a1ead9..c5b9b2fa1b9 100644
 --- a/src/init/v8.cc
 +++ b/src/init/v8.cc
 @@ -269,6 +269,8 @@ void V8::Initialize() {
@@ -591,10 +591,10 @@ index 91463a1..c5b9b2f 100644
  
  void V8::Dispose() {
 diff --git a/src/interpreter/bytecode-generator.cc b/src/interpreter/bytecode-generator.cc
-index ae6d376..4f95076 100644
+index b6b59326301..abbd4e2d914 100644
 --- a/src/interpreter/bytecode-generator.cc
 +++ b/src/interpreter/bytecode-generator.cc
-@@ -5975,6 +5975,36 @@ void BytecodeGenerator::VisitAssignment(Assignment* expr) {
+@@ -5980,6 +5980,36 @@ void BytecodeGenerator::VisitAssignment(Assignment* expr) {
  
    VisitForAccumulatorValue(expr->value());
  
@@ -631,7 +631,7 @@ index ae6d376..4f95076 100644
    builder()->SetExpressionPosition(expr);
    BuildAssignment(lhs_data, expr->op(), expr->lookup_hoisting_mode());
  }
-@@ -6083,6 +6113,35 @@ void BytecodeGenerator::VisitCompoundAssignment(CompoundAssignment* expr) {
+@@ -6088,6 +6118,35 @@ void BytecodeGenerator::VisitCompoundAssignment(CompoundAssignment* expr) {
      VisitForAccumulatorValue(expr->value());
      builder()->BinaryOperation(binop->op(), old_value, kFeedbackIsEmbedded);
    }
@@ -667,7 +667,7 @@ index ae6d376..4f95076 100644
    builder()->SetExpressionPosition(expr);
  
    BuildAssignment(lhs_data, expr->op(), expr->lookup_hoisting_mode());
-@@ -6534,6 +6593,20 @@ void BytecodeGenerator::VisitPropertyLoad(Register obj, Property* property) {
+@@ -6539,6 +6598,20 @@ void BytecodeGenerator::VisitPropertyLoad(Register obj, Property* property) {
      case NON_PROPERTY:
        UNREACHABLE();
      case NAMED_PROPERTY: {
@@ -688,7 +688,7 @@ index ae6d376..4f95076 100644
        builder()->SetExpressionPosition(property);
        const AstRawString* name =
            property->key()->AsLiteral()->AsRawPropertyName();
-@@ -6559,7 +6632,28 @@ void BytecodeGenerator::VisitPropertyLoad(Register obj, Property* property) {
+@@ -6564,7 +6637,28 @@ void BytecodeGenerator::VisitPropertyLoad(Register obj, Property* property) {
              feedback_index(feedback_spec()->AddKeyedLoadICSlot()));
          break;
        }
@@ -717,7 +717,7 @@ index ae6d376..4f95076 100644
        builder()->SetExpressionPosition(property);
        BuildLoadKeyedProperty(obj, feedback_spec()->AddKeyedLoadICSlot());
        break;
-@@ -6874,6 +6968,8 @@ void BytecodeGenerator::VisitCall(Call* expr) {
+@@ -6879,6 +6973,8 @@ void BytecodeGenerator::VisitCall(Call* expr) {
    Expression* callee_expr = expr->expression();
    Call::CallType call_type = expr->GetCallType();
  
@@ -726,7 +726,7 @@ index ae6d376..4f95076 100644
    if (call_type == Call::SUPER_CALL) {
      return VisitCallSuper(expr);
    }
-@@ -7665,6 +7761,33 @@ void BytecodeGenerator::VisitCountOperation(CountOperation* expr) {
+@@ -7671,6 +7767,33 @@ void BytecodeGenerator::VisitCountOperation(CountOperation* expr) {
    // Perform +1/-1 operation.
    builder()->UnaryOperation(expr->op(), kFeedbackIsEmbedded);
  
@@ -761,10 +761,10 @@ index ae6d376..4f95076 100644
    builder()->SetExpressionPosition(expr);
    switch (assign_type) {
 diff --git a/src/objects/lookup-inl.h b/src/objects/lookup-inl.h
-index a14a9b2..d3aa40c 100644
+index c3413668255..03b559958bf 100644
 --- a/src/objects/lookup-inl.h
 +++ b/src/objects/lookup-inl.h
-@@ -439,6 +439,14 @@ MaybeDirectHandle<Object> Object::SetElement(Isolate* isolate,
+@@ -450,6 +450,14 @@ MaybeDirectHandle<Object> Object::SetElement(Isolate* isolate,
    return value;
  }
  
@@ -780,7 +780,7 @@ index a14a9b2..d3aa40c 100644
                                                   DirectHandle<JSAny> object,
                                                   DirectHandle<Name> name) {
 diff --git a/src/objects/objects.cc b/src/objects/objects.cc
-index 3ff2dd2..fcf9aea 100644
+index 3ff2dd2f8d5..fcf9aea76bf 100644
 --- a/src/objects/objects.cc
 +++ b/src/objects/objects.cc
 @@ -1316,6 +1316,91 @@ MaybeHandle<Object> Object::InstantiateIfLazyClosure(
@@ -876,10 +876,10 @@ index 3ff2dd2..fcf9aea 100644
  MaybeHandle<Object> Object::GetProperty(LookupIterator* it,
                                          bool is_global_reference) {
 diff --git a/src/objects/objects.h b/src/objects/objects.h
-index 53945da..5d00d92 100644
+index 91258503a2c..cb34ba73530 100644
 --- a/src/objects/objects.h
 +++ b/src/objects/objects.h
-@@ -363,6 +363,11 @@ class Object : public AllStatic {
+@@ -364,6 +364,11 @@ class Object : public AllStatic {
    V8_EXPORT_PRIVATE V8_WARN_UNUSED_RESULT static MaybeHandle<Object>
    GetProperty(LookupIterator* it, bool is_global_reference = false);
  
@@ -891,7 +891,7 @@ index 53945da..5d00d92 100644
    // ES6 [[Set]] (when passed kDontThrow)
    // Invariants for this and related functions (unless stated otherwise):
    // 1) When the result is Nothing, an exception is pending.
-@@ -418,6 +423,11 @@ class Object : public AllStatic {
+@@ -419,6 +424,11 @@ class Object : public AllStatic {
        PropertyAttributes attributes, Maybe<ShouldThrow> should_throw,
        StoreOrigin store_origin);
  
@@ -904,7 +904,7 @@ index 53945da..5d00d92 100644
        Isolate* isolate, DirectHandle<JSAny> object, DirectHandle<Name> name);
    V8_WARN_UNUSED_RESULT static inline MaybeHandle<Object> GetPropertyOrElement(
 diff --git a/src/runtime/runtime-compiler.cc b/src/runtime/runtime-compiler.cc
-index e998c4d..fe5aa80 100644
+index e998c4d59f4..fe5aa80bf87 100644
 --- a/src/runtime/runtime-compiler.cc
 +++ b/src/runtime/runtime-compiler.cc
 @@ -24,6 +24,11 @@
@@ -934,7 +934,7 @@ index e998c4d..fe5aa80 100644
    LanguageMode language_mode = static_cast<LanguageMode>(args.smi_value_at(3));
    DirectHandle<SharedFunctionInfo> outer_info(args.at<JSFunction>(2)->shared(),
 diff --git a/src/runtime/runtime-test.cc b/src/runtime/runtime-test.cc
-index d0d013c..3091862 100644
+index 9deff853cde..78952c8071a 100644
 --- a/src/runtime/runtime-test.cc
 +++ b/src/runtime/runtime-test.cc
 @@ -4,6 +4,32 @@
@@ -970,7 +970,7 @@ index d0d013c..3091862 100644
  #include <stdio.h>
  
  #include <iomanip>
-@@ -1727,6 +1753,85 @@ RUNTIME_FUNCTION(Runtime_TraceExit) {
+@@ -1736,6 +1762,85 @@ RUNTIME_FUNCTION(Runtime_TraceExit) {
    return obj;  // return TOS
  }
  
@@ -1058,7 +1058,7 @@ index d0d013c..3091862 100644
    CHECK_UNLESS_FUZZING(args.length() == 2);
 diff --git a/src/runtime/runtime-utils.cc b/src/runtime/runtime-utils.cc
 new file mode 100644
-index 0000000..65881e4
+index 00000000000..cf7dbbc1f4e
 --- /dev/null
 +++ b/src/runtime/runtime-utils.cc
 @@ -0,0 +1,711 @@
@@ -1774,7 +1774,7 @@ index 0000000..65881e4
 +
 +}  // namespace v8::internal
 diff --git a/src/runtime/runtime-utils.h b/src/runtime/runtime-utils.h
-index 345e326..bb23a1b 100644
+index 345e326eed8..bb23a1b0152 100644
 --- a/src/runtime/runtime-utils.h
 +++ b/src/runtime/runtime-utils.h
 @@ -5,6 +5,78 @@
@@ -1891,10 +1891,10 @@ index 345e326..bb23a1b 100644
  }  // namespace v8
  
 diff --git a/src/runtime/runtime.cc b/src/runtime/runtime.cc
-index 5a5a01f..843e843 100644
+index e01124b9833..4a1d86abaa9 100644
 --- a/src/runtime/runtime.cc
 +++ b/src/runtime/runtime.cc
-@@ -397,5 +397,31 @@ std::ostream& operator<<(std::ostream& os, Runtime::FunctionId id) {
+@@ -398,5 +398,31 @@ std::ostream& operator<<(std::ostream& os, Runtime::FunctionId id) {
  
  int g_num_isolates_for_testing = 1;
  
@@ -1927,7 +1927,7 @@ index 5a5a01f..843e843 100644
  }  // namespace internal
  }  // namespace v8
 diff --git a/src/runtime/runtime.h b/src/runtime/runtime.h
-index 9d06fcb..7ff9aa6 100644
+index 9c9dfa45a44..179b332304d 100644
 --- a/src/runtime/runtime.h
 +++ b/src/runtime/runtime.h
 @@ -580,6 +580,8 @@ constexpr bool CanTriggerGC(T... properties) {
@@ -1939,7 +1939,7 @@ index 9d06fcb..7ff9aa6 100644
    F(DebugTrace, 0, 1)                                                    \
    F(DebugTraceMinimal, 0, 1)                                             \
    F(DeoptimizeFunction, 1, 1)                                            \
-@@ -691,6 +693,9 @@ constexpr bool CanTriggerGC(T... properties) {
+@@ -692,6 +694,9 @@ constexpr bool CanTriggerGC(T... properties) {
    F(TakeHeapSnapshot, -1, 1)                                             \
    F(TraceEnter, 0, 1)                                                    \
    F(TraceExit, 1, 1)                                                     \
@@ -1949,7 +1949,7 @@ index 9d06fcb..7ff9aa6 100644
    F(TurbofanStaticAssert, 1, 1)                                          \
    F(AssertEscapeAnalysisElided, 1, 1)                                    \
    F(TypedArraySpeciesProtector, 0, 1)                                    \
-@@ -1169,6 +1174,24 @@ enum class DebugPrintValueType : uint16_t {
+@@ -1174,6 +1179,24 @@ enum class DebugPrintValueType : uint16_t {
  
  void PrintIndentation(int stack_size);
  
