@@ -15,27 +15,97 @@ index dfb0b153d0..0e83db043b 100644
      // callbacks on the UI thread.
      static boolean doBindService(
 diff --git a/chrome/android/java/AndroidManifest.xml b/chrome/android/java/AndroidManifest.xml
-index 6e8d1999e5..fd3aba9a63 100644
+index 6e8d1999e5..1176c85584 100644
 --- a/chrome/android/java/AndroidManifest.xml
 +++ b/chrome/android/java/AndroidManifest.xml
-@@ -1369,7 +1369,7 @@ by a child template that "extends" this file.
+@@ -1365,26 +1365,22 @@ by a child template that "extends" this file.
+ 
+       <!-- NOTE: If you change the value of "android:process" for the below services,
+            you also need to update kHelperProcessExecutableName in chrome_constants.cc. -->
+-      {% for i in range(2) %}
++      {% set num_sandboxed_services = 40 %}
++      <meta-data android:name="org.chromium.content.browser.NUM_SANDBOXED_SERVICES"
++          android:value="{{ num_sandboxed_services }}"/>
++      {% for i in range(num_sandboxed_services) %}
        <service android:name="org.chromium.content.app.SandboxedProcessService{{ i }}"
            android:process=":sandboxed_process{{ i }}"
            android:permission="{{ manifest_package }}.permission.CHILD_SERVICE"
 -          android:isolatedProcess="true"
+-          android:exported="false"
+-          {% if (i == 0) %}
+-          android:useAppZygote="true"
+-          {% endif %} />
 +          android:isolatedProcess="false"
-           android:exported="false"
-           {% if (i == 0) %}
-           android:useAppZygote="true"
-@@ -1381,7 +1381,7 @@ by a child template that "extends" this file.
++          android:exported="false" />
+       {% endfor %}
+-      <!-- Restricting to just 2 native-only services, one for zygote and one for non-zygote. -->
+       {% for i in range(2) %}
+       <service android:name="org.chromium.content.app.NativeOnlySandboxedProcessService{{ i }}"
            android:nativeService="true"
            android:process=":sandboxed_process{{ i }}"
            android:permission="{{ manifest_package }}.permission.CHILD_SERVICE"
 -          android:isolatedProcess="true"
+-          {% if (i == 0) %}
+-          android:useAppZygote="true"
+-          {% endif %}
 +          android:isolatedProcess="false"
-           {% if (i == 0) %}
-           android:useAppZygote="true"
-           {% endif %}
+           android:exported="false" >
+           <property android:name="android.app.PROPERTY_NATIVE_SERVICE_LIBRARY_NAME"
+               android:value="lib{{ library_name }}.so" />
+diff --git a/content/public/android/BUILD.gn b/content/public/android/BUILD.gn
+index df985d0eb4..16725866eb 100644
+--- a/content/public/android/BUILD.gn
++++ b/content/public/android/BUILD.gn
+@@ -54,7 +54,7 @@ action_with_pydeps("generate_sandboxed_service_srcjar") {
+   _rebased_srcjar_path = rebase_path(_srcjar_path, root_build_dir)
+ 
+   args = [
+-    "2",
++    "40",
+     _rebased_srcjar_path,
+   ]
+   outputs = [ _srcjar_path ]
+diff --git a/content/public/android/java/src/org/chromium/content/browser/ChildProcessCreationParamsImpl.java b/content/public/android/java/src/org/chromium/content/browser/ChildProcessCreationParamsImpl.java
+index 2207058877..181b1638d3 100644
+--- a/content/public/android/java/src/org/chromium/content/browser/ChildProcessCreationParamsImpl.java
++++ b/content/public/android/java/src/org/chromium/content/browser/ChildProcessCreationParamsImpl.java
+@@ -128,6 +128,10 @@ public class ChildProcessCreationParamsImpl {
+     }
+ 
+     public static boolean isNativeSandboxedServiceEnabled() {
++        if (!getIsSandboxedServiceExternal()) {
++            // VisibleV8 android change required disabling renderer isolation on ChromePublic.
++            return false;
++        }
+         if (sForceNativeSandboxedService != TriState.NOT_SET) {
+             return sForceNativeSandboxedService == TriState.TRUE;
+         }
+diff --git a/content/public/android/java/src/org/chromium/content/browser/ChildProcessLauncherHelperImpl.java b/content/public/android/java/src/org/chromium/content/browser/ChildProcessLauncherHelperImpl.java
+index c81828ed67..311f34437a 100644
+--- a/content/public/android/java/src/org/chromium/content/browser/ChildProcessLauncherHelperImpl.java
++++ b/content/public/android/java/src/org/chromium/content/browser/ChildProcessLauncherHelperImpl.java
+@@ -675,6 +675,21 @@ public final class ChildProcessLauncherHelperImpl {
+                                 bindAsExternalService,
+                                 /* fallbackToNextSlot= */ false,
+                                 sandboxed);
++            } else if (!bindAsExternalService) {
++                // VisibleV8 android change required disabling renderer isolation on ChromePublic:
++                // non-isolated services cannot be bound via Context.bindIsolatedService(..., instanceName).
++                connectionAllocator =
++                        ChildConnectionAllocator.create(
++                                context,
++                                LauncherThread.getHandler(),
++                                freeSlotRunnable,
++                                packageName,
++                                ChildProcessCreationParamsImpl.getSandboxedServicesName(),
++                                "org.chromium.content.browser.NUM_SANDBOXED_SERVICES",
++                                bindToCaller,
++                                bindAsExternalService,
++                                /* fallbackToNextSlot= */ true,
++                                sandboxed);
+             } else {
+                 final int maxIsolatedServices;
+                 if (SysUtils.hasLargeProcessCountSupport()
 diff --git a/content/renderer/java/gin_java_bridge_object.cc b/content/renderer/java/gin_java_bridge_object.cc
 index 896848b40c..f50b8526fe 100644
 --- a/content/renderer/java/gin_java_bridge_object.cc
@@ -187,28 +257,3 @@ index 3066ee6c66..1014517f00 100644
  
      if (!need_sandbox) {
        // The post-sandbox actions still need to happen at some point.
-diff --git a/third_party/blink/renderer/modules/remote_objects/remote_object.cc b/third_party/blink/renderer/modules/remote_objects/remote_object.cc
-index 4da45ac20b..2f4faa5e5a 100644
---- a/third_party/blink/renderer/modules/remote_objects/remote_object.cc
-+++ b/third_party/blink/renderer/modules/remote_objects/remote_object.cc
-@@ -6,6 +6,8 @@
- 
- #include <tuple>
- 
-+#include "base/logging.h"
-+
- #include "base/numerics/safe_conversions.h"
- #include "gin/converter.h"
- #include "third_party/blink/public/web/blink.h"
-diff --git a/third_party/blink/renderer/platform/bindings/v8_binding.h b/third_party/blink/renderer/platform/bindings/v8_binding.h
-index b038020c20..7ee100b6a7 100644
---- a/third_party/blink/renderer/platform/bindings/v8_binding.h
-+++ b/third_party/blink/renderer/platform/bindings/v8_binding.h
-@@ -49,6 +49,7 @@
- #include "v8/include/v8-maybe.h"
- #include "v8/include/v8-persistent-handle.h"
- #include "v8/include/v8-primitive.h"
-+#include "v8/include/v8-visiblev8.h"
- #include "v8/include/v8-value.h"
- 
- namespace blink {
