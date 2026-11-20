@@ -1,5 +1,5 @@
 diff --git a/base/android/java/src/org/chromium/base/process_launcher/BindService.java b/base/android/java/src/org/chromium/base/process_launcher/BindService.java
-index 84781c880f..5fafb63a71 100644
+index 84781c8..5fafb63 100644
 --- a/base/android/java/src/org/chromium/base/process_launcher/BindService.java
 +++ b/base/android/java/src/org/chromium/base/process_launcher/BindService.java
 @@ -36,6 +36,11 @@ public final class BindService {
@@ -15,7 +15,7 @@ index 84781c880f..5fafb63a71 100644
      // callbacks on the UI thread.
      static boolean doBindService(
 diff --git a/chrome/android/java/AndroidManifest.xml b/chrome/android/java/AndroidManifest.xml
-index 7d31a5fac8..60052c49f2 100644
+index 7d31a5f..60052c4 100644
 --- a/chrome/android/java/AndroidManifest.xml
 +++ b/chrome/android/java/AndroidManifest.xml
 @@ -1355,26 +1355,22 @@ by a child template that "extends" this file.
@@ -53,7 +53,7 @@ index 7d31a5fac8..60052c49f2 100644
            <property android:name="android.app.PROPERTY_NATIVE_SERVICE_LIBRARY_NAME"
                android:value="lib{{ library_name }}.so" />
 diff --git a/content/public/android/BUILD.gn b/content/public/android/BUILD.gn
-index df985d0eb4..16725866eb 100644
+index df985d0..1672586 100644
 --- a/content/public/android/BUILD.gn
 +++ b/content/public/android/BUILD.gn
 @@ -54,7 +54,7 @@ action_with_pydeps("generate_sandboxed_service_srcjar") {
@@ -66,7 +66,7 @@ index df985d0eb4..16725866eb 100644
    ]
    outputs = [ _srcjar_path ]
 diff --git a/content/public/android/java/src/org/chromium/content/browser/ChildProcessCreationParamsImpl.java b/content/public/android/java/src/org/chromium/content/browser/ChildProcessCreationParamsImpl.java
-index 2207058877..181b1638d3 100644
+index 2207058..181b163 100644
 --- a/content/public/android/java/src/org/chromium/content/browser/ChildProcessCreationParamsImpl.java
 +++ b/content/public/android/java/src/org/chromium/content/browser/ChildProcessCreationParamsImpl.java
 @@ -128,6 +128,10 @@ public class ChildProcessCreationParamsImpl {
@@ -81,7 +81,7 @@ index 2207058877..181b1638d3 100644
              return sForceNativeSandboxedService == TriState.TRUE;
          }
 diff --git a/content/public/android/java/src/org/chromium/content/browser/ChildProcessLauncherHelperImpl.java b/content/public/android/java/src/org/chromium/content/browser/ChildProcessLauncherHelperImpl.java
-index c81828ed67..311f34437a 100644
+index c81828e..311f344 100644
 --- a/content/public/android/java/src/org/chromium/content/browser/ChildProcessLauncherHelperImpl.java
 +++ b/content/public/android/java/src/org/chromium/content/browser/ChildProcessLauncherHelperImpl.java
 @@ -675,6 +675,21 @@ public final class ChildProcessLauncherHelperImpl {
@@ -107,7 +107,7 @@ index c81828ed67..311f34437a 100644
                  final int maxIsolatedServices;
                  if (SysUtils.hasLargeProcessCountSupport()
 diff --git a/content/renderer/java/gin_java_bridge_object.cc b/content/renderer/java/gin_java_bridge_object.cc
-index 896848b40c..f50b8526fe 100644
+index 896848b..f50b852 100644
 --- a/content/renderer/java/gin_java_bridge_object.cc
 +++ b/content/renderer/java/gin_java_bridge_object.cc
 @@ -14,8 +14,12 @@
@@ -155,7 +155,7 @@ index 896848b40c..f50b8526fe 100644
      return v8::Local<v8::Value>();
    }
 diff --git a/content/renderer/java/gin_java_function_invocation_helper.cc b/content/renderer/java/gin_java_function_invocation_helper.cc
-index 12e1b810fc..4e979f5e5d 100644
+index 12e1b81..4e979f5 100644
 --- a/content/renderer/java/gin_java_function_invocation_helper.cc
 +++ b/content/renderer/java/gin_java_function_invocation_helper.cc
 @@ -14,6 +14,7 @@
@@ -244,7 +244,7 @@ index 12e1b810fc..4e979f5e5d 100644
  }
  
 diff --git a/content/renderer/renderer_main.cc b/content/renderer/renderer_main.cc
-index 3066ee6c66..1014517f00 100644
+index 3066ee6..1014517 100644
 --- a/content/renderer/renderer_main.cc
 +++ b/content/renderer/renderer_main.cc
 @@ -237,8 +237,7 @@ int RendererMain(MainFunctionParams parameters) {
